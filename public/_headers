@@ -1,0 +1,29 @@
+# Netlify 헤더 (netlify.toml 과 함께 belt-and-suspenders)
+#
+# `X-Content-Type-Options: nosniff` 가 켜져 있는 상태에서 Netlify 가 JS 파일을
+# `application/octet-stream` 으로 서빙하면 브라우저가 module script 실행을 거부한다.
+# 여기서 확장자별 Content-Type 을 못 박아 이 케이스를 강제로 막는다.
+#
+# Vite 는 public/_headers 를 dist/_headers 로 그대로 복사한다.
+
+/assets/*.js
+  Content-Type: text/javascript; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.mjs
+  Content-Type: text/javascript; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.css
+  Content-Type: text/css; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/guides/*.pdf
+  Content-Type: application/pdf
+  Cache-Control: public, max-age=604800
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=()
