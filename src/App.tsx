@@ -22,13 +22,22 @@ type BaseScreen =
 
 type Screen = BaseScreen | { kind: 'guide'; from: BaseScreen };
 
-function readTokenFromHash(): string | null {
+/**
+ * QR 진입 시 첫 렌더부터 verifying 상태로 시작하기 위한 초기화 함수.
+ * §5 보안 수용 기준에 따라 fragment 토큰을 즉시 URL/히스토리에서 제거한다.
+ * 이렇게 하면 landing 화면이 잠깐 깜빡이지 않고 곧장 verifying → info 로 이어진다.
+ */
+function initialScreen(): Screen {
+  if (typeof window === 'undefined') return { kind: 'landing' };
   const match = window.location.hash.match(/#t=([^&]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  if (!match) return { kind: 'landing' };
+  const token = decodeURIComponent(match[1]);
+  history.replaceState(null, '', window.location.pathname);
+  return { kind: 'verifying', req: { qrTicket: token } };
 }
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>({ kind: 'landing' });
+  const [screen, setScreen] = useState<Screen>(initialScreen);
 
   const startVerification = useCallback((req: AccessRequest) => {
     setScreen({ kind: 'verifying', req });
@@ -41,14 +50,6 @@ export function App() {
   const closeGuide = useCallback(() => {
     setScreen((s) => (s.kind === 'guide' ? s.from : s));
   }, []);
-
-  // §5 보안 수용 기준: fragment 토큰은 body로 교환하고 URL/히스토리에서 제거.
-  useEffect(() => {
-    const token = readTokenFromHash();
-    if (!token) return;
-    history.replaceState(null, '', window.location.pathname);
-    startVerification({ qrTicket: token });
-  }, [startVerification]);
 
   useEffect(() => {
     if (screen.kind !== 'verifying') return;

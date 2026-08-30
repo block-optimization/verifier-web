@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { DemoBanner } from '../components/DemoBanner';
 import { Call119Button } from '../components/Call119Button';
-import type { AccessRequest } from '../api/emergencyAccess';
+import { DEMO_PERSONA_LABELS, type AccessRequest } from '../api/emergencyAccess';
 
 // V1 · 카메라 없이 진입 (수동코드 대체 경로).
 // 정상 흐름은 QR → OS 카메라 → https://demo.medivc.kr/e#t=<token>
@@ -65,25 +65,22 @@ export function Landing({
         </form>
       </section>
       <details className="demo-hints">
-        <summary>데모 코드 안내</summary>
+        <summary>데모 카드 · 각각 다른 환자</summary>
         <ul>
-          <li>
-            <code>M3D1-7K9Q</code> — 정상 카드 (V3 최소정보)
-          </li>
-          <li>
-            <code>M3D1-EXPR</code> — 만료
-          </li>
-          <li>
-            <code>M3D1-REVK</code> — 철회
-          </li>
-          <li>
-            <code>M3D1-TAMP</code> — 변조 감지
-          </li>
-          <li>
-            <code>M3D1-RATE</code> — 요청 과다 (Rate Limit)
-          </li>
+          {DEMO_PERSONA_LABELS.map((p) => (
+            <li key={p.code}>
+              <code>{p.code}</code> {p.label}
+            </li>
+          ))}
         </ul>
-        <p>정상 코드는 1회만 사용됩니다. 두 번째 조회는 실패로 처리됩니다.</p>
+        <p className="demo-hints__group">실패 시나리오</p>
+        <ul>
+          <li><code>M3D1-EXPR</code> 만료된 카드</li>
+          <li><code>M3D1-REVK</code> 환자가 철회한 카드</li>
+          <li><code>M3D1-TAMP</code> 서명 변조 감지</li>
+          <li><code>M3D1-RATE</code> 요청 과다 (Rate Limit)</li>
+        </ul>
+        <p>물리 카드처럼 같은 코드를 여러 번 스캔해도 매번 최신 데이터를 표시합니다.</p>
       </details>
       <button
         type="button"

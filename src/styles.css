@@ -64,10 +64,13 @@
   --sticky-h: 108px;
 
   /* Type ---------------------------------------------------------------- */
+  /* Pretendard 하나로 통일. serif/mono 별칭을 유지해 기존 규칙 그대로 두되
+     실 표기 폰트는 sans (Pretendard) 로 수렴시킨다. 위계는 굵기·이탤릭·
+     letter-spacing 으로 잡는다. */
   --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
     'Apple SD Gothic Neo', 'Segoe UI', 'Malgun Gothic', system-ui, sans-serif;
-  --font-serif: 'Instrument Serif', 'Pretendard Variable', serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: var(--font-sans);
+  --font-mono: var(--font-sans);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -284,21 +287,18 @@ input {
   padding: 6px 4px 2px;
 }
 .brand {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 22px;
+  font-size: 16px;
+  font-weight: 800;
   line-height: 1;
   letter-spacing: -0.01em;
   color: var(--ink);
 }
 .brand::before {
   content: '◐';
-  font-family: var(--font-sans);
-  font-style: normal;
   font-size: 14px;
   margin-right: 6px;
   color: var(--brand);
-  vertical-align: 2px;
+  vertical-align: 1px;
 }
 .signature-ok {
   font-size: 12px;
@@ -333,15 +333,14 @@ input {
 }
 .demo-banner::before {
   content: 'DEMO';
-  font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 700;
-  padding: 2px 7px;
+  font-weight: 800;
+  padding: 2px 8px;
   background: rgba(255, 255, 255, 0.55);
   color: var(--amber-ink);
   border-radius: 999px;
   border: 1px solid rgba(107, 74, 0, 0.2);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
 }
 @media (prefers-color-scheme: dark) {
   .demo-banner::before {
@@ -386,17 +385,18 @@ input {
 }
 
 .title {
-  font-family: var(--font-serif);
-  font-size: 30px;
-  line-height: 1.15;
-  letter-spacing: -0.015em;
-  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 800;
   margin-bottom: 10px;
   color: var(--ink);
+  word-break: keep-all;
 }
 .title em {
-  font-style: italic;
+  font-style: normal;
   color: var(--brand);
+  font-weight: 800;
 }
 .lede {
   color: var(--ink-soft);
@@ -422,10 +422,10 @@ input {
 }
 .input {
   padding: 18px 16px;
-  font-family: var(--font-mono);
   font-size: 26px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  font-variant-numeric: tabular-nums;
   text-transform: uppercase;
   background: var(--glass-fill-strong);
   backdrop-filter: blur(14px) saturate(160%);
@@ -972,6 +972,16 @@ input {
   flex-direction: column;
   gap: 6px;
 }
+.demo-hints__group {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--glass-stroke-soft);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
 .demo-hints li {
   display: flex;
   gap: 10px;
@@ -982,10 +992,11 @@ input {
   background: var(--glass-fill-strong);
   padding: 3px 10px;
   border-radius: 8px;
-  font-family: var(--font-mono);
   color: var(--brand-ink);
-  font-weight: 700;
+  font-weight: 800;
   font-size: 12px;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
   border: 1px solid var(--glass-stroke);
   min-width: 96px;
   text-align: center;
@@ -1009,6 +1020,661 @@ input {
   box-shadow: var(--glass-shadow-1), 0 8px 22px -6px var(--danger-glow);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+}
+
+/* -------------------------------------------------------------------------
+ * Guide · Liquid Glass 목록 + 원문 상세 (iframe)
+ *
+ *   [목록] editorial hero + 순번·아이콘·소스·라이선스 뱃지가 있는 카드
+ *   [상세] 유리 인용 카드 + 남은 뷰포트를 채우는 iframe + sticky 119
+ *
+ *   iframe 이 정상적으로 렌더되려면 부모가 explicit 한 height 를 가져야 하며
+ *   flex 컨텍스트에서 자식 iframe 이 100% 를 잡으려면 부모에 `min-height: 0`
+ *   이 있어야 한다 (flex 아이템 기본 min-height 는 content-size 라 iframe 이
+ *   0 으로 붕괴한다). 이걸 놓치면 프레임 헤더도 없고 스크롤도 없이
+ *   흰 판만 나오는 증상이 뜬다.
+ * ------------------------------------------------------------------------- */
+
+/* editorial hero */
+.guide-hero {
+  padding: 8px 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.guide-hero__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+}
+.guide-hero__title {
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+  color: var(--ink);
+  word-break: keep-all;
+}
+.guide-hero__title em {
+  font-style: normal;
+  color: var(--brand);
+  font-weight: 800;
+}
+.guide-hero__lede {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.55;
+  max-width: 42ch;
+}
+
+/* 목록 카드 (accent 별 채도 변주) */
+.guide-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.guide-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-stroke);
+  background: var(--glass-fill-strong);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  box-shadow: var(--glass-shadow-1), var(--glass-shadow-3);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  isolation: isolate;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.guide-card::before {
+  /* accent tint bleeding from the left */
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: var(--r-lg) 0 0 var(--r-lg);
+  background: var(--accent-line, transparent);
+  z-index: 1;
+}
+.guide-card::after {
+  content: '';
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 45%;
+  border-radius: calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0;
+  background: linear-gradient(180deg, var(--glass-highlight) 0%, transparent 100%);
+  opacity: 0.24;
+  pointer-events: none;
+  z-index: -1;
+}
+.guide-card:active {
+  transform: scale(0.99);
+}
+.guide-card--coral { --accent-line: #f38b8b; }
+.guide-card--amber { --accent-line: #eaba55; }
+.guide-card--mint  { --accent-line: #6bcf9e; }
+@media (prefers-color-scheme: dark) {
+  .guide-card--coral { --accent-line: #a2565a; }
+  .guide-card--amber { --accent-line: #8a6820; }
+  .guide-card--mint  { --accent-line: #3e7a5c; }
+}
+
+.guide-card__index {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-muted);
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  min-width: 22px;
+  padding-left: 6px;
+}
+.guide-card__icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-stroke);
+  color: var(--brand-ink);
+  font-size: 22px;
+  line-height: 1;
+  box-shadow: var(--glass-shadow-1);
+  flex: none;
+}
+.guide-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.guide-card__title {
+  font-size: clamp(17px, 4.6vw, 20px);
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  word-break: keep-all;
+  line-height: 1.25;
+}
+.guide-card__source {
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+.guide-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.guide-card__chevron {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--ink-muted);
+  line-height: 1;
+  padding-right: 4px;
+}
+
+/* 공통 chip (year · license) */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-stroke);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  letter-spacing: 0.01em;
+}
+.chip--year {
+  background: var(--glass-fill);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+.chip--license {
+  background: var(--brand-tint, var(--glass-fill-quiet));
+  color: var(--brand-ink);
+}
+@media (prefers-color-scheme: dark) {
+  .chip--license {
+    background: rgba(164, 150, 255, 0.12);
+  }
+}
+
+/* ---- 상세 뷰 ---- */
+.page--detail {
+  /* iframe 이 남은 공간을 정확히 채우려면 fixed height 컨텍스트가 필요하다. */
+  height: 100dvh;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--safe-bottom) + var(--sticky-h));
+  gap: 10px;
+}
+.page--detail > * {
+  flex-shrink: 0;
+}
+
+/* Detail view topbar — 제목을 헤더에 truncate 하여 표기, 아이콘 배지 포함 */
+.brand--truncate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 62vw;
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brand--truncate::before {
+  content: none;
+}
+.brand__icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-stroke);
+  color: var(--brand-ink);
+  font-size: 15px;
+  line-height: 1;
+  flex: none;
+}
+
+/*
+ * 원문 출처 · 라이선스 · 기준연도를 담은 접을 수 있는 하단 드로어.
+ *   · 기본은 닫힘 → summary 만 얇게 노출되어 iframe 이 뷰포트 대부분을 차지.
+ *   · 열면 메타 grid + 원문 새 창 열기 버튼이 슬라이드 다운.
+ *   · position: relative 로 sticky 119 위에 자연스럽게 얹힌다.
+ *   · <details> 네이티브 토글이라 키보드/스크린리더 접근성 자동 확보.
+ */
+.citation-toggle {
+  position: relative;
+  background: var(--glass-fill-strong);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid var(--glass-stroke);
+  border-radius: var(--r-md);
+  box-shadow: var(--glass-shadow-1), var(--glass-shadow-3);
+  overflow: hidden;
+  isolation: isolate;
+}
+.citation-toggle::after {
+  content: '';
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 60%;
+  border-radius: calc(var(--r-md) - 1px) calc(var(--r-md) - 1px) 0 0;
+  background: linear-gradient(180deg, var(--glass-highlight) 0%, transparent 100%);
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: -1;
+}
+.citation-toggle > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-ink);
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+.citation-toggle > summary::-webkit-details-marker {
+  display: none;
+}
+.citation-toggle__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.citation-toggle__label::before {
+  /* 미묘한 색 점 — 열기 유도 */
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+.citation-toggle__chevron {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--ink-muted);
+  line-height: 1;
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+.citation-toggle[open] .citation-toggle__chevron {
+  transform: rotate(-90deg);
+}
+.citation-toggle__body {
+  padding: 8px 16px 14px;
+  border-top: 1px solid var(--glass-stroke-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: citation-slide 0.22s cubic-bezier(0.25, 0.9, 0.35, 1);
+}
+@keyframes citation-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .citation-toggle__body {
+    animation: none;
+  }
+  .citation-toggle__chevron {
+    transition: none;
+  }
+}
+.citation-toggle__meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 14px;
+  row-gap: 6px;
+  font-size: 13px;
+}
+.citation-toggle__meta dt {
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+.citation-toggle__meta dd {
+  color: var(--ink);
+  font-weight: 700;
+  text-align: right;
+  word-break: keep-all;
+}
+
+/* -------------------------------------------------------------------------
+ * Guide detail — 요약 콘텐츠 렌더
+ *   원문 PDF 를 iframe 으로 통째로 임베드하지 않고, 사실·절차만 자체 표현으로
+ *   요약해 앱 UI 컴포넌트로 렌더한다. (§10 원칙, 저작권 안전)
+ * ------------------------------------------------------------------------- */
+.page--content {
+  /* .page 기본 padding-bottom (sticky-actions 여백 포함) 을 그대로 사용 */
+  gap: 12px;
+}
+.guide-detail__lede {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  padding: 2px 4px 0;
+  word-break: keep-all;
+}
+
+/* 상황 판단 — quickChecks : "이럴 때" → "이렇게" */
+.quick-checks {
+  position: relative;
+  background: var(--glass-fill-strong);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid var(--glass-stroke);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  box-shadow: var(--glass-shadow-1), var(--glass-shadow-3);
+  isolation: isolate;
+}
+.quick-checks::after {
+  content: '';
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 45%;
+  border-radius: calc(var(--r-md) - 1px) calc(var(--r-md) - 1px) 0 0;
+  background: linear-gradient(180deg, var(--glass-highlight) 0%, transparent 100%);
+  opacity: 0.24;
+  pointer-events: none;
+  z-index: -1;
+}
+.quick-checks__heading {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--brand-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 10px;
+}
+.quick-checks__list {
+  display: flex;
+  flex-direction: column;
+}
+.quick-checks__row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  padding: 10px 0;
+  border-top: 1px solid var(--glass-stroke-soft);
+}
+.quick-checks__row:first-child {
+  border-top: none;
+  padding-top: 2px;
+}
+.quick-checks__row dt {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.quick-checks__row dd {
+  font-size: 13px;
+  color: var(--ink-soft);
+  padding-left: 14px;
+  border-left: 2px solid var(--brand-tint, var(--glass-stroke));
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+/* 절차 섹션 */
+.guide-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.guide-section {
+  position: relative;
+  background: var(--glass-fill-strong);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid var(--glass-stroke);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  box-shadow: var(--glass-shadow-1), var(--glass-shadow-3);
+  isolation: isolate;
+}
+.guide-section::after {
+  content: '';
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 40%;
+  border-radius: calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0;
+  background: linear-gradient(180deg, var(--glass-highlight) 0%, transparent 100%);
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: -1;
+}
+.guide-section__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.guide-section__index {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink-muted);
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+}
+.guide-section__heading {
+  font-size: 19px;
+  line-height: 1.25;
+  color: var(--ink);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  word-break: keep-all;
+}
+.guide-section__intro {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.55;
+  margin: 4px 0 4px;
+}
+
+/* 단계 리스트 (번호 배지) */
+.step-list {
+  list-style: none;
+  counter-reset: step;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.step-list__item {
+  counter-increment: step;
+  position: relative;
+  padding-left: 36px;
+  min-height: 28px;
+}
+.step-list__item::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #7b6fff, var(--brand));
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  box-shadow: 0 2px 6px var(--brand-glow);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.step-list__title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.4;
+  word-break: keep-all;
+}
+.step-list__detail {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin-top: 4px;
+  word-break: keep-all;
+}
+.step-list__caution {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--amber-glass);
+  color: var(--amber-ink);
+  border: 1px solid var(--glass-stroke);
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.step-list__caution > span {
+  flex: none;
+  line-height: 1;
+}
+
+/* 불릿 리스트 */
+.bullet-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.bullet-list li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  word-break: keep-all;
+}
+.bullet-list li::before {
+  content: '•';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  color: var(--brand);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* 결정적 경고 카드 (코랄 유리) */
+.critical-warnings {
+  position: relative;
+  background: var(--coral-glass);
+  color: var(--coral-ink);
+  border: 1px solid var(--glass-stroke);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+  box-shadow: var(--glass-shadow-1), var(--glass-shadow-3);
+  isolation: isolate;
+}
+.critical-warnings__heading {
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.01em;
+}
+.critical-warnings ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.critical-warnings li {
+  font-size: 13.5px;
+  line-height: 1.5;
+  padding-left: 14px;
+  position: relative;
+  word-break: keep-all;
+}
+.critical-warnings li::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  top: -1px;
+  font-weight: 700;
+  color: currentColor;
+  opacity: 0.7;
+}
+
+/* -------------------------------------------------------------------------
+ * (구) iframe wrap — 요약 콘텐츠 방식으로 전환 후 미사용. 향후 PDF-embed
+ * 옵션 부활 시 재활용 가능하도록 유지.
+ * ------------------------------------------------------------------------- */
+.guide-frame-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--glass-stroke);
+  background: #ffffff;
+  box-shadow: var(--glass-shadow-1), var(--glass-shadow-3);
+  isolation: isolate;
+  /* iOS 에서 iframe 내부 스크롤이 관성 스크롤과 결합되도록 */
+  -webkit-overflow-scrolling: touch;
+}
+.guide-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #ffffff;
 }
 
 /* -------------------------------------------------------------------------
