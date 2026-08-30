@@ -63,7 +63,24 @@
     # 캐시 정책 — index.html 은 항상 fresh 여야 새 버전 배포가 즉시 반영됨
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# 정적 asset (fingerprinted) 은 장기 캐싱해도 안전
+# -----------------------------------------------------------------------------
+# 정적 asset — Netlify 의 자동 MIME 추론이 nosniff 와 만나면 module script 로드가
+# 실패할 수 있어 JS/CSS 는 Content-Type 을 명시적으로 지정한다.
+# (Chrome: "Failed to load module script: MIME type application/octet-stream" 방지)
+# -----------------------------------------------------------------------------
+[[headers]]
+  for = "/assets/*.js"
+  [headers.values]
+    Content-Type = "text/javascript; charset=utf-8"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/*.css"
+  [headers.values]
+    Content-Type = "text/css; charset=utf-8"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# 나머지 assets (폰트·이미지 등) 은 캐싱만 지정, Content-Type 은 Netlify 기본값 사용
 [[headers]]
   for = "/assets/*"
   [headers.values]
