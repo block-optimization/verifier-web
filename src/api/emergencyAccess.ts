@@ -12,7 +12,7 @@ import type {
  *                                (Vite proxy 또는 Netlify Edge 를 통과)
  *   미설정 / 그 외              → 아래 mock 페르소나 사용
  *
- * DEV Backend : https://34-205-135-30.sslip.io (CORS 미개방, Netlify redirect 로 우회)
+ * DEV Backend : https://api-175-45-193-221.sslip.io (CORS 미개방, Netlify redirect 로 우회)
  *
  * §0/§5 원칙 준수 : 응답에 안정적 환자 식별자(profileId 등) 미포함, opaque
  *                  accessSessionId 만 반환. 매 조회에 새로 발급.

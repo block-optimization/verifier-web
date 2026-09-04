@@ -281,7 +281,7 @@ npm run dev            # http://localhost:5173
 cp .env.example .env.local
 # .env.local 수정:
 # VITE_USE_REAL_BACKEND=true
-# VITE_API_PROXY_TARGET=https://34-205-135-30.sslip.io
+# VITE_API_PROXY_TARGET=https://api-175-45-193-221.sslip.io
 npm run dev
 ```
 

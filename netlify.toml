@@ -23,19 +23,19 @@
 # -----------------------------------------------------------------------------
 [[redirects]]
   from = "/api/*"
-  to = "https://34-205-135-30.sslip.io/api/:splat"
+  to = "https://api-175-45-193-221.sslip.io/api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/demo/*"
-  to = "https://34-205-135-30.sslip.io/demo/:splat"
+  to = "https://api-175-45-193-221.sslip.io/demo/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/.well-known/*"
-  to = "https://34-205-135-30.sslip.io/.well-known/:splat"
+  to = "https://api-175-45-193-221.sslip.io/.well-known/:splat"
   status = 200
   force = true
 

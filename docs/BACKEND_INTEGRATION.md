@@ -7,11 +7,11 @@
 
 | 환경 | Base URL | 비고 |
 | --- | --- | --- |
-| DEV | `https://34-205-135-30.sslip.io` | EC2 공인 IP 기반 sslip.io. IP 변동 시 `.env.local` 수정 |
+| DEV | `https://api-175-45-193-221.sslip.io` | EC2 공인 IP 기반 sslip.io. IP 변동 시 `.env.local` 수정 |
 | STAGE / PROD | 미배포 | |
 
-Swagger UI : `https://34-205-135-30.sslip.io/docs`
-OpenAPI JSON : `https://34-205-135-30.sslip.io/openapi.json`
+Swagger UI : `https://api-175-45-193-221.sslip.io/docs`
+OpenAPI JSON : `https://api-175-45-193-221.sslip.io/openapi.json`
 
 ## verifier-web 이 호출하는 endpoint (사용중 · 예정)
 
@@ -100,12 +100,12 @@ Backend 응답은 chain 트랜잭션 완료를 기다리지 않고 반환된다 
 ```bash
 cp .env.example .env.local
 # VITE_USE_REAL_BACKEND=true
-# VITE_API_PROXY_TARGET=https://34-205-135-30.sslip.io
+# VITE_API_PROXY_TARGET=https://api-175-45-193-221.sslip.io
 npm run dev
 
 # 다른 터미널에서 Backend 준비 확인
-curl -f https://34-205-135-30.sslip.io/health
-curl -f https://34-205-135-30.sslip.io/ready
+curl -f https://api-175-45-193-221.sslip.io/health
+curl -f https://api-175-45-193-221.sslip.io/ready
 ```
 
 브라우저에서 `http://localhost:5173` 을 열고, Backend Swagger 에서 patient token →

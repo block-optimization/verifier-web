@@ -16,7 +16,7 @@ import react from '@vitejs/plugin-react';
  */
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const target = env.VITE_API_PROXY_TARGET ?? 'https://34-205-135-30.sslip.io';
+  const target = env.VITE_API_PROXY_TARGET ?? 'https://api-175-45-193-221.sslip.io';
   const proxyOptions = { target, changeOrigin: true, secure: false } as const;
 
   return {
