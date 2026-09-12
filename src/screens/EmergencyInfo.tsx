@@ -21,17 +21,23 @@ const ITEM_LABEL: Record<ItemCode, string> = {
   BLOOD_TYPE: '혈액형',
   MEDICATION_SUMMARY: '복용 요약',
   CONDITION: '주요 질환',
+  IMPLANTED_DEVICE: '체내 삽입 장치',
+  ADVANCE_DIRECTIVE: '사전연명의료의향',
   IDENTITY: '인적사항',
   EMERGENCY_CONTACT: '비상연락',
+  UNKNOWN: '기타 응급정보',
 };
 
 const DISPLAY_ORDER: ItemCode[] = [
   'DRUG_ALLERGY',
   'ANTICOAGULANT_FLAG',
+  'IMPLANTED_DEVICE',
   'EMERGENCY_NOTE',
   'BLOOD_TYPE',
-  'MEDICATION_SUMMARY',
   'CONDITION',
+  'MEDICATION_SUMMARY',
+  'ADVANCE_DIRECTIVE',
+  'UNKNOWN',
   'IDENTITY',
   'EMERGENCY_CONTACT',
 ];
@@ -90,8 +96,8 @@ export function EmergencyInfo({
       </div>
 
       <section className="items" aria-label="응급 최소정보">
-        {items.map((item) => (
-          <article className="item" key={item.code}>
+        {items.map((item, i) => (
+          <article className="item" key={`${item.code}-${i}`}>
             <div className="item__label">{ITEM_LABEL[item.code]}</div>
             <div className="item__value">{item.value}</div>
             <div className="item__meta">
@@ -99,10 +105,33 @@ export function EmergencyInfo({
                 status={item.verificationStatus}
                 source={item.source}
               />
+              {item.freshness && item.freshness !== 'CURRENT' && (
+                <span className="badge badge--unverified">
+                  최신성 미확인
+                </span>
+              )}
             </div>
           </article>
         ))}
       </section>
+
+      {(data.warnings?.length || data.excludedExpiredCount) && (
+        <section className="critical-warnings" role="note" aria-label="서버 경고">
+          <div className="critical-warnings__heading">
+            <span aria-hidden>⚠</span> 정보 신뢰도 주의
+          </div>
+          <ul>
+            {data.warnings?.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+            {!!data.excludedExpiredCount && (
+              <li>
+                만료된 항목 {data.excludedExpiredCount}건이 표시에서 제외되었습니다.
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
 
       <div className="actions">
         <button
@@ -124,16 +153,38 @@ export function EmergencyInfo({
       </button>
       {detailsOpen && (
         <dl className="provenance" aria-label="카드 정보">
-          <dt>출처</dt>
-          <dd>{data.card.issuer}</dd>
-          <dt>서명</dt>
-          <dd>{data.card.signatureVerified ? '✓ 검증됨' : '⚠ 미검증'}</dd>
-          <dt>만료</dt>
-          <dd>{formatExpiry(data.card.expiresAt)}</dd>
-          <dt>정책</dt>
-          <dd>v{data.policyVersion}</dd>
+          {data.card?.issuer && (
+            <>
+              <dt>출처</dt>
+              <dd>{data.card.issuer}</dd>
+            </>
+          )}
+          {data.card && (
+            <>
+              <dt>서명</dt>
+              <dd>{data.card.signatureVerified ? '✓ 검증됨' : '⚠ 미검증'}</dd>
+            </>
+          )}
+          {data.card?.expiresAt && (
+            <>
+              <dt>만료</dt>
+              <dd>{formatExpiry(data.card.expiresAt)}</dd>
+            </>
+          )}
+          {typeof data.policyVersion === 'number' && (
+            <>
+              <dt>정책</dt>
+              <dd>v{data.policyVersion}</dd>
+            </>
+          )}
           <dt>대상</dt>
           <dd>일반 발견자</dd>
+          {data.classification && (
+            <>
+              <dt>분류</dt>
+              <dd>{data.classification}</dd>
+            </>
+          )}
         </dl>
       )}
 

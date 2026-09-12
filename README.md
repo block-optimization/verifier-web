@@ -146,7 +146,7 @@ rate-limit + 단회사용이라 oracle 공격 실익이 극히 낮은 반면, �
       │                                   │
       │  POST /api/public/v1/             │      ┌──────────────┐
       │       emergency-access            │──►   │  audit outbox │
-      │  (⛔ 현재 DEV 미배포)               │      └────┬─────────┘
+      │  (✅ 배포·연동 검증 완료)            │      └────┬─────────┘
       └───────────────────────────────────┘           │
                                                        │ 비동기
                                                        ▼
@@ -288,8 +288,16 @@ npm run dev
 CORS 미개방이라 Vite proxy 필수. 자세한 계약·엔드포인트·정합성 게이트는
 [docs/BACKEND_INTEGRATION.md](docs/BACKEND_INTEGRATION.md).
 
-**현재 상태 (2026-08-30):** 공개 소비자 엔드포인트 `POST /api/public/v1/emergency-access` 가
-DEV 백엔드에 아직 배포되지 않았다. 배포 전까지는 mock 만으로 데모한다.
+**현재 상태 (2026-09-13):** 공개 소비자 엔드포인트 `POST /api/public/v1/emergency-access` 는
+Naver Cloud DEV 백엔드에 **배포 완료**되었고 verifier-web 연동도 검증됐다
+(`src/api/backendAdapter.ts` 가 FHIR 응답을 화면 형태로 변환).
+
+`VITE_USE_REAL_BACKEND=true` 로 켜면 실제 환자 데이터가 표시된다. 수동코드는 **숫자 10자리**,
+QR 티켓은 base64url 40~100자다. 데모 코드(`M3D1-7K9Q`)는 mock 모드 전용이다.
+
+남은 제약: 백엔드가 발급하는 QR `qrPayload` 의 도메인이 `demo.medivc.invalid` (해석 불가)라
+일반 폰 카메라 스캔으로는 verifier-web 에 도달하지 않는다. 자세한 내용과 해결 옵션은
+[docs/BACKEND_INTEGRATION.md](docs/BACKEND_INTEGRATION.md) §QR fragment 참조.
 
 ### 스크립트
 
@@ -356,9 +364,10 @@ prod 번들 **gzip 55 KB**.
 
 ## 11. 로드맵 (미구현 · 대기)
 
-- [ ] 백엔드 `POST /api/public/v1/emergency-access` DEV 배포 후 실서버 스위치 스모크
+- [x] 백엔드 `POST /api/public/v1/emergency-access` DEV 배포 후 실서버 스위치 스모크
+- [ ] QR `qrPayload` 도메인 (`demo.medivc.invalid`) 해결 — 백엔드 설정 또는 앱팀 URL 조립
 - [ ] 백엔드 OpenAPI CI 아티팩트로부터 client type 자동 생성 → `types.ts` 대체
-- [ ] `EXPIRED` · `TAMPERED` HTTP 시그널 방식 백엔드와 확정 후 `errorFromStatus` 매핑 갱신
+- [ ] 백엔드가 만료/철회/변조를 401 하나가 아닌 개별 코드로 구분하면 `errorFromStatus` 세분화
 - [ ] `emergency-contact/dial` · `/v1/guides` 실 endpoint 배포 후 mock 제거
 - [ ] Playwright E2E — 마스터플랜 P0-12 "20회 연속 성공" 시나리오 자동화
 - [ ] Lighthouse mobile · axe-core accessibility 회귀 파이프라인

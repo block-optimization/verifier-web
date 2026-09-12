@@ -1,10 +1,13 @@
 import type {
   AccessError,
   AccessErrorReason,
+  BackendEmergencyAccessResponse,
   EmergencyAccessResponse,
   EmergencyCardMeta,
   EmergencyItem,
 } from '../types';
+import { adaptBackendResponse } from './backendAdapter';
+import { isAcceptableCode } from './codeFormat';
 
 /*
  * Real backend switch
@@ -216,7 +219,9 @@ export async function requestEmergencyAccess(
       throw makeError('NETWORK');
     }
     if (!res.ok) throw errorFromStatus(res.status);
-    return (await res.json()) as EmergencyAccessResponse;
+    // 백엔드는 FHIR records[] 를 반환한다 — 화면이 쓰는 items[] 형태로 변환한다.
+    const raw = (await res.json()) as BackendEmergencyAccessResponse;
+    return adaptBackendResponse(raw);
   }
 
   await sleep(900 + Math.random() * 500);
@@ -231,7 +236,8 @@ export async function requestEmergencyAccess(
   if (token === 'M3D1-RATE') throw makeError('RATE_LIMITED');
 
   // 형식 체크 — 실 backend 400 응답을 mock 에서 흉내.
-  if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(token) && token.length < 16) {
+  // 허용: 데모 8자 코드(M3D1-7K9Q) · 실서버 10자리 숫자 · 40자 이상 QR 티켓.
+  if (!isAcceptableCode(token) && token.length < 16) {
     throw makeError('INVALID');
   }
 
@@ -261,6 +267,10 @@ function makeError(reason: AccessErrorReason): AccessError {
 function errorFromStatus(status: number): AccessError {
   if (status === 429) return makeError('RATE_LIMITED');
   if (status === 410) return makeError('REVOKED');
-  if (status === 404 || status === 400) return makeError('INVALID');
+  // 백엔드는 만료 · 재사용(소비됨) · 존재하지 않음을 모두 401 ACCESS_TICKET_INVALID
+  // 로 반환한다. 단일 사유로 좁힐 수 없으므로 발견자에게 가장 실행 가능한
+  // 안내인 EXPIRED("갱신한 카드가 있을 수 있다") 로 매핑한다.
+  if (status === 401 || status === 403) return makeError('EXPIRED');
+  if (status === 404 || status === 400 || status === 422) return makeError('INVALID');
   return makeError('NETWORK');
 }

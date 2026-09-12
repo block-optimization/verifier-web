@@ -29,7 +29,10 @@ type Screen = BaseScreen | { kind: 'guide'; from: BaseScreen };
  */
 function initialScreen(): Screen {
   if (typeof window === 'undefined') return { kind: 'landing' };
-  const match = window.location.hash.match(/#t=([^&]+)/);
+  // 백엔드가 발급하는 qrPayload 는 `#ticket=<token>` 형식이고, 마스터플랜 §5 표기와
+  // 기존 데모 QR 은 `#t=<token>` 이다. 양쪽 모두 받아들인다.
+  const hash = window.location.hash;
+  const match = hash.match(/#(?:ticket|t)=([^&]+)/);
   if (!match) return { kind: 'landing' };
   const token = decodeURIComponent(match[1]);
   history.replaceState(null, '', window.location.pathname);

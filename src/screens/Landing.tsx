@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { DemoBanner } from '../components/DemoBanner';
 import { Call119Button } from '../components/Call119Button';
 import { DEMO_PERSONA_LABELS, type AccessRequest } from '../api/emergencyAccess';
+import { isAcceptableCode, normalizeCode } from '../api/codeFormat';
 
 // V1 · 카메라 없이 진입 (수동코드 대체 경로).
 // 정상 흐름은 QR → OS 카메라 → https://demo.medivc.kr/e#t=<token>
@@ -14,13 +15,9 @@ export function Landing({
   onOpenGuide: () => void;
 }) {
   const [code, setCode] = useState('');
-  const trimmed = code.trim().toUpperCase();
-  const normalized = trimmed.includes('-')
-    ? trimmed
-    : trimmed.length === 8
-    ? `${trimmed.slice(0, 4)}-${trimmed.slice(4)}`
-    : trimmed;
-  const canSubmit = /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(normalized);
+  // 실 백엔드는 숫자 10자리, 데모는 8자 하이픈 코드를 쓴다. 둘 다 허용한다.
+  const normalized = normalizeCode(code);
+  const canSubmit = isAcceptableCode(normalized);
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -50,14 +47,14 @@ export function Landing({
             autoCapitalize="characters"
             autoComplete="off"
             spellCheck={false}
-            placeholder="M3D1-____"
+            placeholder="0000000000"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            maxLength={9}
+            maxLength={12}
             aria-describedby="code-help"
           />
           <p id="code-help" className="hint">
-            앞 4자리 · 뒤 4자리 (예: M3D1-7K9Q)
+            카드에 적힌 숫자 10자리 (데모 코드는 M3D1-7K9Q 형식)
           </p>
           <button type="submit" className="btn btn--primary" disabled={!canSubmit}>
             코드로 열기
