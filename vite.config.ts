@@ -24,10 +24,10 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       host: true,
+      // 최소 권한 — verifier-web 이 쓰는 공개 열람 경로만 forward 한다.
+      // netlify.toml 의 프로덕션 redirect 와 범위를 일치시켜 dev/prod 동작이 갈리지 않게 한다.
       proxy: {
-        '/api': proxyOptions,
-        '/demo': proxyOptions,
-        '/.well-known': proxyOptions,
+        '/api/public': proxyOptions,
       },
     },
   };
