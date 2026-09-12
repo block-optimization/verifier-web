@@ -1,0 +1,56 @@
+name: NCP Micro verifier deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verifier-micro-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: micro
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.18.0
+          cache: npm
+      - name: Typecheck and build exact pushed revision
+        env:
+          VITE_USE_REAL_BACKEND: 'true'
+        run: |
+          npm ci
+          npm run build
+          tar -czf release.tgz dist
+      - name: Deploy only static verifier files
+        env:
+          DEPLOY_KEY: ${{ secrets.NCP_MICRO_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.NCP_MICRO_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.NCP_MICRO_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
+          umask 077
+          key="$RUNNER_TEMP/medivc-key"
+          hosts="$RUNNER_TEMP/medivc-hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$hosts"
+          digest="$(sha256sum release.tgz | cut -d' ' -f1)"
+          ssh -i "$key" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$hosts" \
+            -o ConnectTimeout=20 -o ServerAliveInterval=30 \
+            "root@$DEPLOY_HOST" "deploy $GITHUB_SHA $digest" < release.tgz
