@@ -27,9 +27,14 @@ OpenDID, Mobile ID, or W3C Verifiable Credentials conformance.
 The finder-facing web app enforces the following invariants. Any change that
 weakens them requires review under this policy:
 
-- QR ticket is carried in the URL fragment (`#t=<token>`), stripped from the
+- QR ticket (`#ticket=<token>` / legacy `#t=<token>`) or reusable bracelet reference
+  (`#card=<reference>`) is carried in the URL fragment, stripped from the
   address bar and history before the first render, and never written to logs or
   localStorage. See `MEDIVC_MASTER_PLAN` §5.
+- A bracelet reference is valid until revocation and exchanges for a 120-second,
+  single-use PUBLIC ticket. It is not a patient ID. Copying a bracelet QR permits
+  repeated minimum-disclosure access until revoked; temporary tickets do not
+  prevent that. Responder access still requires backend-enforced authentication.
 - No blockchain client, wallet, or RPC library is bundled. Emergency access
   responses are rendered without waiting for chain state; the finder is not the
   audit consumer.

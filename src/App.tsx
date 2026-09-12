@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Landing } from './screens/Landing';
 import { Verifying } from './screens/Verifying';
 import { EmergencyInfo } from './screens/EmergencyInfo';
@@ -32,15 +32,23 @@ function initialScreen(): Screen {
   // 백엔드가 발급하는 qrPayload 는 `#ticket=<token>` 형식이고, 마스터플랜 §5 표기와
   // 기존 데모 QR 은 `#t=<token>` 이다. 양쪽 모두 받아들인다.
   const hash = window.location.hash;
-  const match = hash.match(/#(?:ticket|t)=([^&]+)/);
+  const match = hash.match(/^#(card|ticket|t)=([^&]+)$/);
   if (!match) return { kind: 'landing' };
-  const token = decodeURIComponent(match[1]);
   history.replaceState(null, '', window.location.pathname);
-  return { kind: 'verifying', req: { qrTicket: token } };
+  try {
+    const token = decodeURIComponent(match[2]);
+    return { kind: 'verifying', req: match[1] === 'card' ? { cardReference: token } : { qrTicket: token } };
+  } catch {
+    return { kind: 'error', error: { reason: 'INVALID', message: '올바르지 않은 QR입니다' } };
+  }
 }
 
+// Read and scrub once, including React StrictMode's repeated initialization.
+const entryScreen = initialScreen();
+
 export function App() {
-  const [screen, setScreen] = useState<Screen>(initialScreen);
+  const [screen, setScreen] = useState<Screen>(entryScreen);
+  const pending = useRef<{ req: AccessRequest; promise: Promise<EmergencyAccessResponse> } | null>(null);
 
   const startVerification = useCallback((req: AccessRequest) => {
     setScreen({ kind: 'verifying', req });
@@ -56,10 +64,15 @@ export function App() {
 
   useEffect(() => {
     if (screen.kind !== 'verifying') return;
+    // Reuse the in-flight request during StrictMode effect replay: never consume twice.
+    if (pending.current?.req !== screen.req) {
+      pending.current = { req: screen.req, promise: requestEmergencyAccess(screen.req) };
+    }
+    const promise = pending.current.promise;
     let cancelled = false;
     (async () => {
       try {
-        const data = await requestEmergencyAccess(screen.req);
+        const data = await promise;
         if (!cancelled) setScreen({ kind: 'info', data });
       } catch (err) {
         if (cancelled) return;

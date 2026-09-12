@@ -23,6 +23,7 @@ import { isAcceptableCode } from './codeFormat';
 const USE_REAL_BACKEND = import.meta.env.VITE_USE_REAL_BACKEND === 'true';
 
 export interface AccessRequest {
+  cardReference?: string;
   qrTicket?: string;
   manualCode?: string;
 }
@@ -210,12 +211,26 @@ export async function requestEmergencyAccess(
   if (USE_REAL_BACKEND) {
     let res: Response;
     try {
+      let presentation = req;
+      if (req.cardReference) {
+        const exchange = await fetch('/api/public/v1/card-sessions', {
+          method: 'POST', cache: 'no-store', referrerPolicy: 'no-referrer',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({ cardReference: req.cardReference }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!exchange.ok) throw errorFromStatus(exchange.status);
+        const ticket = await exchange.json() as { qrTicket: string };
+        presentation = { qrTicket: ticket.qrTicket };
+      }
       res = await fetch('/api/public/v1/emergency-access', {
         method: 'POST',
+        cache: 'no-store', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(15_000),
         headers: { 'content-type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify(req),
+        body: JSON.stringify(presentation),
       });
-    } catch {
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'reason' in error) throw error;
       throw makeError('NETWORK');
     }
     if (!res.ok) throw errorFromStatus(res.status);
@@ -226,7 +241,7 @@ export async function requestEmergencyAccess(
 
   await sleep(900 + Math.random() * 500);
 
-  const token = (req.qrTicket ?? req.manualCode ?? '').trim().toUpperCase();
+  const token = (req.cardReference ?? req.qrTicket ?? req.manualCode ?? '').trim().toUpperCase();
   if (!token) throw makeError('INVALID');
 
   // Error 재현용 토큰 (테스트 시나리오 트리거).

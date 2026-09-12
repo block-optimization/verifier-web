@@ -36,7 +36,7 @@ export function Landing({
         <p className="lede">
           QR을 스캔하면 자동으로 검증이 시작됩니다. 카메라를 쓸 수 없다면 카드의 수동코드를 입력하세요.
         </p>
-        <form className="manual-form" onSubmit={submit}>
+        <form className="manual-form" onSubmit={submit} noValidate>
           <label htmlFor="code" className="label">
             수동코드
           </label>
