@@ -1,0 +1,148 @@
+# 백엔드 팀 확인 요청
+
+verifier-web 실 백엔드 연동 과정에서 실측으로 확인한 항목들.
+측정 기준: `https://api-175-45-193-221.sslip.io` · 2026-09-13 · `origin/dev@5493186`
+
+우선순위는 **2026-09-21 제출** 기준으로 매겼습니다.
+
+---
+
+## P0 — 시연을 막을 수 있는 것
+
+### 1. qrPayload 도메인 변경이 커밋돼 있나요? ⚠️ 유실 위험
+
+배포 서버는 이렇게 반환합니다:
+```
+"qrPayload": "https://api-175-45-193-221.sslip.io/emergency#ticket=<token>"
+```
+
+그런데 **5개 브랜치 전부** 하드코딩입니다:
+```ts
+// src/access-session/access-session.service.ts:50
+qrPayload: `https://demo.medivc.invalid/emergency#ticket=${qrTicket}`
+```
+확인한 브랜치: `dev` · `main` · `feature/mvp-core` · `feature/mobile-id-transport` · `fix/dev-deploy-routing`
+`EMERGENCY_BASE_URL` · `WEB_ORIGIN` 류 환경변수 검색 결과 **0건**.
+
+`src/openapi/openapi.schemas.ts:1090` 의 정규식도 같은 상태입니다:
+```
+^https://demo\.medivc\.invalid/emergency#ticket=[A-Za-z0-9_-]{40,100}$
+```
+(다만 배포본 OpenAPI 에서는 이 패턴이 검색되지 않아 스키마도 함께 바뀐 것으로 보입니다)
+
+**묻고 싶은 것**
+1. 이 변경이 어느 커밋에 있나요? 커밋 안 됐다면 **재배포 시 `demo.medivc.invalid` 로 되돌아가고**, 그러면 폰 카메라로 QR 을 찍어도 DNS 해석에 실패합니다 — 시연 직전에 터질 수 있습니다.
+2. 환경변수로 빼주실 수 있나요? verifier-web 을 Netlify 로 분리 배포할 경우 그쪽 URL 을 가리켜야 합니다.
+
+### 2. 티켓 TTL 상한 300초 — 물리 QR 이 불가능합니다
+
+```
+ttlSeconds must not be greater than 300
+singleUse: true
+```
+
+QR 과 수동코드는 **같은 티켓의 두 표현**임을 확인했습니다 (수동코드로 조회 후 같은 티켓의 QR → 401).
+
+그래서 팔찌 · 스티커 · 인쇄 카드 · NFC 키링은 성립하지 않습니다. 발급 5분 뒤 죽고, 누가 한 번 찍으면 끝입니다. 지금 QR 은 응급 순간에 앱 화면에 띄우는 용도인데, **응급 상황의 정의가 "환자가 앱을 못 여는 상태"** 라 모순입니다.
+
+**묻고 싶은 것**
+- 장수명 · 재사용 가능한 티켓 종류를 추가할 계획이 있나요?
+- 보안 트레이드오프는 인지하고 있습니다: QR 사진을 찍은 사람이 반복 열람 가능. 다만 완화 요소가 이미 있습니다 —
+  - PUBLIC audience 는 8건 중 **2건만** 노출 (실측 확인)
+  - 파기가 **미사용 티켓까지 즉시 무효화** (실측 확인)
+  - Rate limit 작동 (무효코드 5회 후 429)
+- 안 만든다면 시연에서 물리 매체를 빼고 "앱 화면 QR → 발견자 스캔" 만 보여주는 쪽으로 정리하겠습니다.
+
+---
+
+## P1 — 완성도
+
+### 3. 합성 환자가 1명뿐입니다
+
+```ts
+// src/synthetic-medical-data/synthetic-fixtures.ts:3
+export const DEMO_SUBJECT_ID = '10000000-0000-4000-8000-000000000001';
+```
+
+그리고 실제 모바일 신분증 로그인도 여기로 갑니다:
+```ts
+// src/auth/login.service.ts:102, 116
+? await this.persistence.getIdentity(DEMO_SUBJECT_ID)
+patientSubjectId: audience === 'PATIENT' ? DEMO_SUBJECT_ID : null,
+```
+
+카드를 여러 장 만들면 **cardId 와 링크는 전부 다른데** 의료정보는 전부 같은 환자입니다.
+
+**묻고 싶은 것**
+- `synthetic-fixtures.ts` 에 SUBJECT BETA / GAMMA 를 추가할 여력이 있나요? (각각 다른 알레르기 · 질환)
+- 추가한다면 `POST /demo/v1/tokens/patient` 가 주체를 고를 수 있어야 합니다. 단 지금 주체 하드코딩은 **의도된 보안 장치**로 보여서(주입 시도 전부 무시됨), demoMode 에서만 허용하는 조건부여야 할 것 같습니다.
+- D-8 이라 무리라면 환자 1명으로 가고 "동일 구조로 N명 확장" 으로 설명하겠습니다.
+
+### 4. 만료 · 철회 · 변조가 전부 401 하나로 옵니다
+
+```
+소비된 티켓 재사용   → 401 ACCESS_TICKET_INVALID "invalid, expired, or consumed access token"
+존재한 적 없는 티켓  → 401 ACCESS_TICKET_INVALID "invalid, expired, or consumed access token"
+파기된 카드의 티켓   → 401 ACCESS_TICKET_INVALID (동일)
+```
+
+**열거 oracle 이 없는 건 잘 설계된 것**이라 봅니다. 다만 verifier-web 은 발견자에게 사유별로 다른 안내를 하려 했습니다 (만료 → "갱신한 카드가 근처에 있을 수 있다", 철회 → "환자가 공개를 중단했다"). 지금은 전부 `EXPIRED` 로 매핑했습니다.
+
+**묻고 싶은 것**
+- 보안상 통합 문구를 유지하실 건가요? 그러면 프론트도 현재 매핑을 유지합니다.
+- 아니면 철회(환자의 능동적 행위)만 별도 코드로 구분해 주실 수 있나요? 그건 oracle 위험이 낮다고 판단됩니다.
+
+### 5. 파기된 카드로 티켓 발급 시 500 이 납니다
+
+```
+POST /api/patient/v1/cards/{revokedCardId}/tickets → HTTP 500
+```
+동작(거부)은 맞지만 4xx + 명시적 code 가 적절해 보입니다. 앱이 사용자에게 "이미 파기된 카드입니다" 를 안내할 수 없습니다.
+
+---
+
+## P2 — 프론트가 대기 중인 것
+
+### 6. 없는 endpoint 2개
+
+| 경로 | verifier-web 상태 |
+|---|---|
+| `POST /api/public/v1/emergency-contact/dial` | 미존재 → 비상연락 버튼을 화면에서 숨김 (`emergencyContactPresent: false` 고정) |
+| `GET /v1/guides` | 미존재 → mock + 번들 PDF 로 대체 |
+
+계획에 있나요? 없으면 현재 우회를 유지하겠습니다.
+
+---
+
+## 확인만 필요
+
+### 7. 데모 환자 이력 초기화 방법
+
+`/demo/v1/tokens/*` 에 rate limit 이 없어서(15연타 전부 201) 누구나 카드·티켓을 무제한 발급할 수 있습니다. 주체가 하드코딩이라 **타인 정보 접근은 불가**하고 합성 데이터뿐이라 피해는 없지만, **접근 이력이 시연에 쓰는 그 환자에게 쌓입니다.**
+
+마스터플랜 §4 에 `POST /v1/internal/demo/reset` 이 P0 로 잡혀 있는데 구현돼 있나요? 시연 전 이력 정리가 필요합니다.
+
+### 8. Netlify 분리 배포 시 CORS
+
+현재 `/emergency` 가 verifier-web 을 서빙해서 same-origin 이라 문제가 없습니다. Netlify 를 병행한다면:
+- CORS allowlist 에 Netlify origin 을 넣어주실 건가요?
+- 아니면 Netlify Edge redirect 로 프록시하는 현재 방식을 유지할까요? (verifier-web `netlify.toml` 에 `/api/public/*` 만 forward 하도록 좁혀 뒀습니다)
+
+### 9. 모바일 신분증 임시 비활성화 상태
+
+`e39a642 fix: AWS 데모 모바일 신분증 임시 비활성화` 커밋이 있습니다. 시연 시점에 되살릴 계획인가요? 환자 앱은 OmniOne CX WebView + PKCE 를 이미 구현해 둔 상태입니다.
+
+---
+
+## 참고 — 이미 잘 돼 있어서 확인만 한 것
+
+측정하면서 확인한 것들입니다. 문제 없습니다.
+
+- **데모 토큰 주체·권한 하드코딩** — `sub` · `patientId` · `scope` 주입 시도 전부 무시. 권한 상승 불가
+- **production fail-closed** — `NODE_ENV=production` + `MEDIVC_DEMO_MODE=true` 조합에서 **부팅 실패** (`environment.ts:102`). 런타임 체크보다 강함
+- **데모 발급 가드** — `assertDemoIssuanceEnabled()` 가 demoMode 아니면 404 (`auth.service.ts:180`)
+- **정책 필터가 서버측 강제** — 전체 8건 중 PUBLIC 은 2건, RESPONDER 는 7건. 나머지는 응답에 아예 없음
+- **파기가 미사용 티켓까지 무효화** — 분실 시나리오에서 회수가 실제로 됨
+- **Rate limit** — 공개 엔드포인트 무효코드 5회 후 429
+- **QR 티켓 엔트로피** — 43자 base64url ≈ 258비트
+- **`.well-known` 정직한 선언** — `openDidCertified: false`, `mobileIdCertified: false`, `w3cVerifiableCredentialsCertified: false`
