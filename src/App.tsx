@@ -50,6 +50,14 @@ export function App() {
   const [screen, setScreen] = useState<Screen>(entryScreen);
   const pending = useRef<{ req: AccessRequest; promise: Promise<EmergencyAccessResponse> } | null>(null);
 
+  useEffect(() => {
+    const scanAgain = () => {
+      if (/^#(?:card|ticket|t)=/.test(window.location.hash)) setScreen(initialScreen());
+    };
+    window.addEventListener('hashchange', scanAgain);
+    return () => window.removeEventListener('hashchange', scanAgain);
+  }, []);
+
   const startVerification = useCallback((req: AccessRequest) => {
     setScreen({ kind: 'verifying', req });
   }, []);
