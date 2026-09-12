@@ -14,28 +14,21 @@
   NODE_VERSION = "20"
 
 # -----------------------------------------------------------------------------
-# Backend proxy — same-origin 위장으로 CORS 회피
+# Backend proxy — 최소 권한 원칙
 #
-# `VITE_USE_REAL_BACKEND=true` 로 세팅하면 프론트가 `/api/public/v1/emergency-access`
-# 를 호출하고, 이 규칙이 그 요청을 backend origin 으로 forward 한다.
-# `status = 200` + `force = true` = SPA 라우팅보다 우선. 실 backend proxy.
-# `to` 값은 새 backend URL 로 바뀔 수 있으니 IP 변경 시 여기만 수정.
+# verifier-web 이 실제로 호출하는 endpoint 는 POST /api/public/v1/emergency-access
+# 하나뿐이다 (src/api/emergencyAccess.ts 의 유일한 fetch).
+#
+# 이전에는 `/api/*` · `/demo/*` · `/.well-known/*` 를 통째로 forward 했는데,
+# 그러면 배포 도메인이 백엔드 전체 API 의 공개 게이트웨이가 된다:
+#   POST /demo/v1/tokens/patient  → 토큰 발급
+#   GET  /api/patient/v1/profile  → 그 토큰으로 환자 전체 기록 열람
+# 발견자에게 8건 중 2건만 보여준다는 이 앱의 전제와 정면으로 어긋나므로
+# 공개 열람 경로만 남긴다. 나머지는 SPA fallback 으로 index.html 이 응답한다.
 # -----------------------------------------------------------------------------
 [[redirects]]
-  from = "/api/*"
-  to = "https://api-175-45-193-221.sslip.io/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/demo/*"
-  to = "https://api-175-45-193-221.sslip.io/demo/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/.well-known/*"
-  to = "https://api-175-45-193-221.sslip.io/.well-known/:splat"
+  from = "/api/public/*"
+  to = "https://api-175-45-193-221.sslip.io/api/public/:splat"
   status = 200
   force = true
 
@@ -60,6 +53,9 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     # 명시적으로 필요 없는 브라우저 권한 전부 차단
     Permissions-Policy = "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
+    # CSP — 폰트 CDN 외 외부 리소스를 차단하고 프레이밍·플러그인을 금지한다.
+    # connect-src 'self' 이므로 브라우저는 same-origin(Netlify redirect) 로만 API 를 호출한다.
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
     # 캐시 정책 — index.html 은 항상 fresh 여야 새 버전 배포가 즉시 반영됨
     Cache-Control = "public, max-age=0, must-revalidate"
 
