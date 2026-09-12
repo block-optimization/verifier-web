@@ -67,7 +67,7 @@ const REASON_COPY: Record<AccessErrorReason, ReasonCopy> = {
       </>
     ),
     lede:
-      '등록되지 않은 코드입니다. 환자가 다른 응급 카드를 지니고 있을 수 있어요. 지금은 즉시 119에 신고하세요.',
+      '사용할 수 없는 카드나 조회 코드입니다. 환자가 다른 응급 카드를 지니고 있을 수 있어요. 지금은 즉시 119에 신고하세요.',
   },
   RATE_LIMITED: {
     mark: '⏱',

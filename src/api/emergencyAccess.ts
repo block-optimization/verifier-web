@@ -283,9 +283,8 @@ function errorFromStatus(status: number): AccessError {
   if (status === 429) return makeError('RATE_LIMITED');
   if (status === 410) return makeError('REVOKED');
   // 백엔드는 만료 · 재사용(소비됨) · 존재하지 않음을 모두 401 ACCESS_TICKET_INVALID
-  // 로 반환한다. 단일 사유로 좁힐 수 없으므로 발견자에게 가장 실행 가능한
-  // 안내인 EXPIRED("갱신한 카드가 있을 수 있다") 로 매핑한다.
-  if (status === 401 || status === 403) return makeError('EXPIRED');
+  // 로 반환한다. 영구 팔찌의 폐기를 시간 만료라고 단정하지 않는다.
+  if (status === 401 || status === 403) return makeError('INVALID');
   if (status === 404 || status === 400 || status === 422) return makeError('INVALID');
   return makeError('NETWORK');
 }
