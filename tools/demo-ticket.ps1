@@ -15,6 +15,7 @@ param(
   [string]$Api     = "https://api-175-45-193-221.sslip.io",
   [string]$Site    = "",
   [ValidateSet("PUBLIC","RESPONDER")][string]$Purpose = "PUBLIC",
+  [switch]$Bracelet,
   [switch]$NoOpen
 )
 
@@ -36,11 +37,17 @@ try {
     -Headers $headers -ContentType "application/json" `
     -Body '{"credentialLifetimeSeconds":3600}' -TimeoutSec 15
 
-  Step "3/3  단회 티켓 발급 ($Purpose)..."
-  $body = @{ purpose = $Purpose; ttlSeconds = 300 } | ConvertTo-Json -Compress
-  $ticket = Invoke-RestMethod -Method Post `
-    -Uri "$Api/api/patient/v1/cards/$($card.cardId)/tickets" `
-    -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 15
+  if ($Bracelet) {
+    Step "3/3  팔찌 발급 (영구 재사용)..."
+    $ticket = Invoke-RestMethod -Method Post -Uri "$Api/api/patient/v1/bracelets" `
+      -Headers $headers -ContentType "application/json" -Body '{}' -TimeoutSec 15
+  } else {
+    Step "3/3  단회 티켓 발급 ($Purpose)..."
+    $body = @{ purpose = $Purpose; ttlSeconds = 300 } | ConvertTo-Json -Compress
+    $ticket = Invoke-RestMethod -Method Post `
+      -Uri "$Api/api/patient/v1/cards/$($card.cardId)/tickets" `
+      -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 15
+  }
 }
 catch {
   Write-Host ""
@@ -52,18 +59,25 @@ catch {
 # 열 주소 결정 — Site 를 주면 그쪽, 아니면 백엔드가 준 qrPayload 그대로
 if ($Site) {
   $base = $Site.TrimEnd('/')
-  $url  = "$base/#ticket=$($ticket.qrTicket)"
+  if ($Bracelet) { $url = "$base/#card=$($ticket.cardReference)" }
+  else           { $url = "$base/#ticket=$($ticket.qrTicket)" }
 } else {
   $url = $ticket.qrPayload
 }
 
-$expires   = [datetime]::Parse($ticket.expiresAt).ToLocalTime()
-$remaining = [int]($expires - (Get-Date)).TotalSeconds
-
 Write-Host ("-" * 52)
-Write-Host "  수동코드 " -NoNewline; Write-Host $ticket.manualCode -ForegroundColor Yellow
-Write-Host "  만료     $($expires.ToString('HH:mm:ss')) (약 $remaining 초 남음)"
-Write-Host "  1회용    링크나 수동코드 중 하나만 사용 (같은 티켓)" -ForegroundColor DarkGray
+if ($Bracelet) {
+  Write-Host "  카드참조 " -NoNewline; Write-Host $ticket.cardReference -ForegroundColor Yellow
+  Write-Host "  만료     없음 (validUntil: null)"
+  Write-Host "  재사용   무제한. 스캔마다 서버가 새 일회용 티켓을 발급" -ForegroundColor DarkGray
+  Write-Host "  파기     POST /api/patient/v1/cards/$($card.cardId)/revoke" -ForegroundColor DarkGray
+} else {
+  $expires   = [datetime]::Parse($ticket.expiresAt).ToLocalTime()
+  $remaining = [int]($expires - (Get-Date)).TotalSeconds
+  Write-Host "  수동코드 " -NoNewline; Write-Host $ticket.manualCode -ForegroundColor Yellow
+  Write-Host "  만료     $($expires.ToString('HH:mm:ss')) (약 $remaining 초 남음)"
+  Write-Host "  1회용    링크나 수동코드 중 하나만 사용 (같은 티켓)" -ForegroundColor DarkGray
+}
 Write-Host ("-" * 52)
 Write-Host "  $url" -ForegroundColor Cyan
 Write-Host ""
