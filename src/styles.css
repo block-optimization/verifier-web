@@ -61,7 +61,7 @@
   --safe-right: env(safe-area-inset-right, 0px);
 
   --page-max: 480px;
-  --sticky-h: 108px;
+  --sticky-h: 132px;
 
   /* Type ---------------------------------------------------------------- */
   /* Pretendard 하나로 통일. serif/mono 별칭을 유지해 기존 규칙 그대로 두되
@@ -840,6 +840,11 @@ input {
   right: 0;
   bottom: 0;
   z-index: 30;
+  /*
+   * 실제 높이를 페이지가 알 수 있게 노출한다. --sticky-h 를 눈대중으로 잡으면
+   * 뷰포트에 따라 dock 이 마지막 버튼을 덮어 오작동한다 (iPhone 13 에서
+   * 가이드 버튼을 누르면 119 가 걸리는 회귀가 있었다).
+   */
   padding:
     12px
     max(16px, var(--safe-left))

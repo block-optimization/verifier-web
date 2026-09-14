@@ -39,6 +39,20 @@ jobs:
         # package.json 의 `build` = "tsc && vite build" 이므로 strict 타입체크 + prod build 동시 검증
         run: npm run build
 
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: E2E (마스터플랜 불변식 · 접근성 · P0-12 20회 연속)
+        run: npm test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: playwright-report
+          retention-days: 7
+
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4
         with:

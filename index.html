@@ -2,7 +2,9 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0" />
+    <!-- maximum-scale 을 두지 않는다. 응급현장 발견자에는 고령자·저시력 사용자가
+         포함되고, 확대를 막으면 알레르기 값을 읽지 못한다 (WCAG 1.4.4). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f6f3ef" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b0a12" media="(prefers-color-scheme: dark)" />
     <meta name="robots" content="noindex, nofollow" />
