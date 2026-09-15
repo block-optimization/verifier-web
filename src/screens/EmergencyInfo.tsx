@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import logo from '../assets/logo.png';
 import { DemoBanner } from '../components/DemoBanner';
 import { Call119Button } from '../components/Call119Button';
 import { VerificationBadge } from '../components/VerificationBadge';
@@ -84,7 +85,7 @@ export function EmergencyInfo({
   return (
     <main className="page">
       <header className="topbar">
-        <img className="brand" src="/logo.png" alt="MediVC 응급정보" />
+        <img className="brand" src={logo} alt="MediVC 응급정보" />
         <span className="signature-ok" aria-label="서명 검증됨">
           서명 검증 ✓
         </span>

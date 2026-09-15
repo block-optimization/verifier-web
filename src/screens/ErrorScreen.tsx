@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import logo from '../assets/logo.png';
 import { DemoBanner } from '../components/DemoBanner';
 import { Call119Button } from '../components/Call119Button';
 import type { AccessError, AccessErrorReason } from '../types';
@@ -105,7 +106,7 @@ export function ErrorScreen({
   return (
     <main className="page">
       <header className="topbar">
-        <img className="brand" src="/logo.png" alt="MediVC 응급정보" />
+        <img className="brand" src={logo} alt="MediVC 응급정보" />
       </header>
       <DemoBanner />
       <section className="card error" role="alert">

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import logo from '../assets/logo.png';
 import { DemoBanner } from '../components/DemoBanner';
 import { Call119Button } from '../components/Call119Button';
 import { DEMO_PERSONA_LABELS, type AccessRequest } from '../api/emergencyAccess';
@@ -28,7 +29,7 @@ export function Landing({
   return (
     <main className="page">
       <header className="topbar">
-        <img className="brand" src="/logo.png" alt="MediVC 응급정보" />
+        <img className="brand" src={logo} alt="MediVC 응급정보" />
       </header>
       <DemoBanner />
       <section className="card">
