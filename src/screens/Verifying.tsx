@@ -6,7 +6,7 @@ export function Verifying() {
   return (
     <main className="page">
       <header className="topbar">
-        <div className="brand">MediVC 응급정보</div>
+        <img className="brand" src="/logo.png" alt="MediVC 응급정보" />
       </header>
       <DemoBanner />
       <section className="card verifying">
