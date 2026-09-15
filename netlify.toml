@@ -55,7 +55,7 @@
     Permissions-Policy = "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
     # CSP — 폰트 CDN 외 외부 리소스를 차단하고 프레이밍·플러그인을 금지한다.
     # connect-src 'self' 이므로 브라우저는 same-origin(Netlify redirect) 로만 API 를 호출한다.
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
     # 캐시 정책 — index.html 은 항상 fresh 여야 새 버전 배포가 즉시 반영됨
     Cache-Control = "public, max-age=0, must-revalidate"
 
