@@ -9,8 +9,6 @@ import {
   loadNaverMapsScript,
   type LocationErrorReason,
 } from '../api/location';
-import { completeReport } from '../api/emergencyAccess';
-import type { EmergencyAccessResponse } from '../types';
 
 // 119 신고 중심 피봇: 발견자에게 환자의 질병 · 약물 정보를 보여주지 않는다.
 // 대신 (1) 즉시 119 신고를 유도하고 (2) 통화 중 불러줄 정확한 위치와
@@ -121,17 +119,8 @@ interface NaverMapsNamespace {
   };
 }
 
-export function EmergencyReport({
-  data,
-  onOpenGuide,
-  onDone,
-}: {
-  data: EmergencyAccessResponse;
-  onOpenGuide: () => void;
-  onDone: () => void;
-}) {
+export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
   const [location, setLocation] = useState<LocationState>({ status: 'loading' });
-  const [reporting, setReporting] = useState(false);
   const [mapState, setMapState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInitialized = useRef(false);
@@ -200,17 +189,6 @@ export function EmergencyReport({
         mapInitialized.current = false;
         setMapState('error');
       });
-  }
-
-  async function onReportComplete() {
-    if (reporting) return;
-    setReporting(true);
-    try {
-      await completeReport(data.accessSessionId);
-    } catch {
-      // 보호자 알림은 서버 부가 기능 — 실패해도 발견자의 다음 단계를 막지 않는다.
-    }
-    onOpenGuide();
   }
 
   return (
@@ -299,23 +277,10 @@ export function EmergencyReport({
       </section>
 
       <div className="actions">
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={onReportComplete}
-          disabled={reporting}
-        >
-          {reporting ? '연결 중…' : '신고 완료 · 응급처치 가이드 보기'}
-        </button>
-        <button type="button" className="btn btn--ghost" onClick={onOpenGuide}>
-          응급처치 일반 가이드
+        <button type="button" className="btn btn--primary" onClick={onOpenGuide}>
+          신고 완료 · 응급처치 가이드 보기
         </button>
       </div>
-
-      <p className="footnote">이 열람은 기록되며 본인에게 통보됩니다.</p>
-      <button className="link-btn" type="button" onClick={onDone}>
-        처음으로
-      </button>
 
       <div className="sticky-actions" role="region" aria-label="상시 응급 도움">
         <div className="sticky-actions__inner">

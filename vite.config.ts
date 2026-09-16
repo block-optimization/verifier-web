@@ -8,11 +8,10 @@ import react from '@vitejs/plugin-react';
  * 하드코딩 대신 `.env.local` 의 VITE_API_PROXY_TARGET 로 주입한다.
  *
  * Backend CORS 미개방이 전제이므로 브라우저에서 직접 호출 금지. 반드시 이 proxy
- * 를 거쳐 same-origin 으로 위장한 뒤 `/api/*`, `/demo/*`, `/.well-known/*`
- * 상대 경로만 사용한다.
+ * 를 거쳐 same-origin 으로 위장한 뒤 상대 경로만 사용한다.
  *
- * 실서버 스위치는 별개의 env 인 VITE_USE_REAL_BACKEND 로 제어한다
- * (src/api/emergencyAccess.ts).
+ * verifier-web 이 실제로 호출하는 유일한 백엔드 경로는
+ * `/api/public/v1/location/reverse-geocode` 뿐이다 (src/api/location.ts).
  */
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
