@@ -110,12 +110,61 @@ function buildSteps(location: LocationState): ReportStep[] {
   ];
 }
 
+interface NaverLatLng {
+  lat: () => number;
+  lng: () => number;
+}
+interface NaverPoint {}
+interface NaverPointerEvent {
+  coord: NaverLatLng;
+}
+interface NaverInfoWindow {
+  setContent: (html: string) => void;
+  open: (map: unknown, position: NaverLatLng) => void;
+}
 interface NaverMapsNamespace {
   maps: {
-    LatLng: new (lat: number, lng: number) => unknown;
-    Map: new (el: HTMLElement, options: { center: unknown; zoom: number }) => unknown;
-    Marker: new (options: { position: unknown; map: unknown }) => unknown;
+    LatLng: new (lat: number, lng: number) => NaverLatLng;
+    Point: new (x: number, y: number) => NaverPoint;
+    Map: new (el: HTMLElement, options: { center: NaverLatLng; zoom: number }) => unknown;
+    Marker: new (options: {
+      position: NaverLatLng;
+      map: unknown;
+      icon?: { content: string; anchor: NaverPoint };
+    }) => unknown;
+    InfoWindow: new (options: { content: string }) => NaverInfoWindow;
+    Event: {
+      addListener: (
+        target: unknown,
+        eventName: string,
+        handler: (e: NaverPointerEvent) => void,
+      ) => unknown;
+    };
   };
+}
+
+function escapeHtml(value: string): string {
+  const entities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return value.replace(/[&<>"']/g, (c) => entities[c] ?? c);
+}
+
+function pinInfoContent(state: 'loading' | 'error' | { building?: string; address: string }): string {
+  if (state === 'loading') {
+    return '<div style="padding:10px 12px;font-size:13px;">불러오는 중…</div>';
+  }
+  if (state === 'error') {
+    return '<div style="padding:10px 12px;font-size:13px;color:#c8271a;">주소를 확인할 수 없어요</div>';
+  }
+  const building = state.building
+    ? `<div style="font-weight:700;color:#0b7d8c;margin-bottom:2px;">${escapeHtml(state.building)}</div>`
+    : '';
+  return `<div style="padding:10px 12px;max-width:220px;font-size:13px;line-height:1.5;">${building}<div>${escapeHtml(state.address)}</div></div>`;
 }
 
 export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
@@ -123,6 +172,7 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
   const [mapState, setMapState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInitialized = useRef(false);
+  const infoWindowRef = useRef<NaverInfoWindow | null>(null);
 
   const loadLocation = useCallback(() => {
     setLocation({ status: 'loading' });
@@ -181,7 +231,35 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
         const { maps } = window.naver as unknown as NaverMapsNamespace;
         const center = new maps.LatLng(location.lat, location.lng);
         const map = new maps.Map(mapContainerRef.current, { center, zoom: 16 });
-        new maps.Marker({ position: center, map });
+
+        // 현재 위치 — 점(dot) 표시로. 지도 위 다른 지점을 누르면 그 주소를 보여주는
+        // 마커/InfoWindow와 시각적으로 구분되게 한다.
+        new maps.Marker({
+          position: center,
+          map,
+          icon: {
+            content:
+              '<span style="display:block;width:14px;height:14px;border-radius:50%;background:var(--mv-key,#0b7d8c);border:2px solid #fff;box-shadow:0 0 0 2px rgba(11,125,140,0.35);"></span>',
+            anchor: new maps.Point(7, 7),
+          },
+        });
+
+        const infoWindow = new maps.InfoWindow({ content: pinInfoContent('loading') });
+        infoWindowRef.current = infoWindow;
+
+        maps.Event.addListener(map, 'click', (e: NaverPointerEvent) => {
+          const lat = e.coord.lat();
+          const lng = e.coord.lng();
+          infoWindow.setContent(pinInfoContent('loading'));
+          infoWindow.open(map, e.coord);
+          reverseGeocode(lat, lng)
+            .then((geo) => {
+              const address = geo.roadAddress ?? geo.jibunAddress ?? `좌표 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+              infoWindow.setContent(pinInfoContent({ building: geo.buildingName, address }));
+            })
+            .catch(() => infoWindow.setContent(pinInfoContent('error')));
+        });
+
         setMapState('ready');
       })
       .catch(() => {
