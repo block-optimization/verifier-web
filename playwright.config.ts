@@ -26,6 +26,10 @@ export default defineConfig({
     trace: 'on-first-retry',
     // 응급현장 주 사용자는 모바일 브라우저다.
     ...devices['iPhone 13'],
+    // .item 카드 페이드인(opacity 0→1) 도중 axe가 스캔하면 반투명 blend 색을
+    // 잡아 color-contrast가 매번 다른 값으로 플레이키하게 실패한다. 앱 CSS가
+    // 이미 prefers-reduced-motion을 지원하니 테스트에서도 그걸 켜서 없앤다.
+    reducedMotion: 'reduce',
   },
 
   projects: [
