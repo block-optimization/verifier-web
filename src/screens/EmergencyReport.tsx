@@ -274,18 +274,12 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
         <img className="brand" src={logo} alt="MediVC 응급정보" />
       </header>
 
-      <div className="triage" role="alert">
-        응급 상황이에요. 지금 바로 119에 신고하세요.
-      </div>
-
-      <section className="report-block" aria-label="119 신고 안내">
+      <section className="report-block" aria-label="119 신고 안내 및 현재 위치">
         <p className="report-block__lede">
-          전화를 걸고 <strong>스피커폰</strong>으로 전환한 뒤, 아래 위치와 상황을 그대로 전달해 주세요.
+          지금 바로 전화를 걸고 <strong>스피커폰</strong>으로 전환한 뒤, 아래 위치와 상황을 그대로 전달해 주세요.
         </p>
         <Call119Button variant="primary" />
-      </section>
 
-      <section className="report-block" aria-label="현재 위치">
         <div className="report-block__label">위치</div>
         {location.status === 'loading' && <p className="hint">위치를 확인하는 중…</p>}
         {location.status === 'error' && (
