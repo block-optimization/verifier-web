@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import logo from '../assets/logo.png';
 import { DemoBanner } from '../components/DemoBanner';
 import { Call119Button } from '../components/Call119Button';
-import { DEMO_PERSONA_LABELS, type AccessRequest } from '../api/emergencyAccess';
+import type { AccessRequest } from '../api/emergencyAccess';
 import { isAcceptableCode, normalizeCode } from '../api/codeFormat';
 
 // V1 · 카메라 없이 진입 (수동코드 대체 경로).
@@ -33,9 +33,9 @@ export function Landing({
       </header>
       <DemoBanner />
       <section className="card">
-        <h1 className="title">응급 카드를 <em>확인합니다</em></h1>
+        <h1 className="title">119 신고를 <em>도와드립니다</em></h1>
         <p className="lede">
-          QR을 스캔하면 자동으로 검증이 시작됩니다. 카메라를 쓸 수 없다면 카드의 수동코드를 입력하세요.
+          QR을 스캔하면 위치 확인과 신고 안내가 시작됩니다. 카메라를 쓸 수 없다면 카드의 수동코드를 입력하세요.
         </p>
         <form className="manual-form" onSubmit={submit} noValidate>
           <label htmlFor="code" className="label">
@@ -63,13 +63,9 @@ export function Landing({
         </form>
       </section>
       <details className="demo-hints">
-        <summary>데모 카드 · 각각 다른 환자</summary>
+        <summary>테스트용 코드</summary>
         <ul>
-          {DEMO_PERSONA_LABELS.map((p) => (
-            <li key={p.code}>
-              <code>{p.code}</code> {p.label}
-            </li>
-          ))}
+          <li><code>M3D1-7K9Q</code> 정상 데모 코드</li>
         </ul>
         <p className="demo-hints__group">실패 시나리오</p>
         <ul>
@@ -78,7 +74,6 @@ export function Landing({
           <li><code>M3D1-TAMP</code> 서명 변조 감지</li>
           <li><code>M3D1-RATE</code> 요청 과다 (Rate Limit)</li>
         </ul>
-        <p>물리 카드처럼 같은 코드를 여러 번 스캔해도 매번 최신 데이터를 표시합니다.</p>
       </details>
       <button
         type="button"

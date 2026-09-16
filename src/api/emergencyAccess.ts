@@ -3,8 +3,6 @@ import type {
   AccessErrorReason,
   BackendEmergencyAccessResponse,
   EmergencyAccessResponse,
-  EmergencyCardMeta,
-  EmergencyItem,
 } from '../types';
 import { adaptBackendResponse } from './backendAdapter';
 import { isAcceptableCode } from './codeFormat';
@@ -29,169 +27,18 @@ export interface AccessRequest {
 }
 
 // -----------------------------------------------------------------------------
-// Mock 데모 페르소나
+// Mock 데모 코드
 //
-// 물리 QR/NFC 키링은 재사용 가능한 물체이므로 같은 token 을 여러 번 스캔해도
-// 서버는 매번 그 시점의 최신 정보를 반환하는 게 정상 동작 (마스터플랜 §5 회전·철회
-// 는 환자의 능동적 행위, 스캔으로 소진되지 않음). 그래서 mock 도 페르소나 token
-// 을 소진하지 않고 매 호출마다 신규 accessSessionId 로 응답한다.
-//
-// 서로 다른 카드 → 서로 다른 환자 데이터를 보여주기 위한 데모용 세트.
-// 실서비스에서는 backend 가 카드/티켓 → 환자 정보 매핑을 관리한다.
+// 발견자 화면은 더 이상 환자별 의료정보를 표시하지 않으므로(§ 119 신고 중심 피봇),
+// 페르소나별 데이터 차이를 둘 이유가 없다. 정상 데모 코드 하나(M3D1-7K9Q)와
+// 실패 시나리오 트리거 코드만 의미가 있다 (Landing 화면 "테스트용 코드" 참고).
 // -----------------------------------------------------------------------------
-interface DemoPersona {
-  card: EmergencyCardMeta;
-  items: EmergencyItem[];
-  emergencyContactPresent: boolean;
-}
 
-const PERSONAS: Record<string, DemoPersona> = {
-  'M3D1-7K9Q': {
-    card: {
-      issuer: 'Demo 한국대병원',
-      signatureVerified: true,
-      expiresAt: '2026-12-31T23:59:59+09:00',
-    },
-    items: [
-      {
-        code: 'DRUG_ALLERGY',
-        value: '페니실린',
-        source: { type: 'DEMO_ISSUER', displayName: '한국대병원' },
-        verificationStatus: 'TEST_VERIFIED',
-        observedAt: '2026-07-30T00:00:00Z',
-      },
-      {
-        code: 'ANTICOAGULANT_FLAG',
-        value: '예',
-        source: { type: 'DEMO_ISSUER', displayName: '한국대병원' },
-        verificationStatus: 'TEST_VERIFIED',
-        observedAt: '2026-07-30T00:00:00Z',
-      },
-      {
-        code: 'EMERGENCY_NOTE',
-        value: '오른팔에 의료용 밴드 · 최근 치과 시술',
-        source: { type: 'USER_ASSERTED' },
-        verificationStatus: 'UNVERIFIED',
-        observedAt: '2026-08-15T00:00:00Z',
-      },
-    ],
-    emergencyContactPresent: true,
-  },
-
-  'M3D2-A1B2': {
-    card: {
-      issuer: 'Demo 세종병원',
-      signatureVerified: true,
-      expiresAt: '2027-03-15T23:59:59+09:00',
-    },
-    items: [
-      {
-        code: 'DRUG_ALLERGY',
-        value: '아스피린 · NSAIDs',
-        source: { type: 'DEMO_ISSUER', displayName: '세종병원' },
-        verificationStatus: 'TEST_VERIFIED',
-        observedAt: '2026-08-02T00:00:00Z',
-      },
-      {
-        code: 'ANTICOAGULANT_FLAG',
-        value: '아니오',
-        source: { type: 'DEMO_ISSUER', displayName: '세종병원' },
-        verificationStatus: 'TEST_VERIFIED',
-        observedAt: '2026-08-02T00:00:00Z',
-      },
-      {
-        code: 'EMERGENCY_NOTE',
-        value: '천식 · 흡입기 왼쪽 주머니 소지',
-        source: { type: 'USER_ASSERTED' },
-        verificationStatus: 'UNVERIFIED',
-        observedAt: '2026-08-20T00:00:00Z',
-      },
-    ],
-    emergencyContactPresent: true,
-  },
-
-  'M3D3-C3D4': {
-    card: {
-      issuer: 'Demo 성모의료원',
-      signatureVerified: true,
-      expiresAt: '2027-01-31T23:59:59+09:00',
-    },
-    items: [
-      {
-        code: 'DRUG_ALLERGY',
-        value: '조영제 · 요오드',
-        source: { type: 'DEMO_ISSUER', displayName: '성모의료원' },
-        verificationStatus: 'TEST_VERIFIED',
-        observedAt: '2026-06-10T00:00:00Z',
-      },
-      {
-        code: 'ANTICOAGULANT_FLAG',
-        value: '예 (와파린)',
-        source: { type: 'DEMO_ISSUER', displayName: '성모의료원' },
-        verificationStatus: 'TEST_VERIFIED',
-        observedAt: '2026-06-10T00:00:00Z',
-      },
-      {
-        code: 'EMERGENCY_NOTE',
-        value: '왼쪽 가슴 페이스메이커 · MRI 금기',
-        source: { type: 'DEMO_ISSUER', displayName: '성모의료원' },
-        verificationStatus: 'TEST_VERIFIED',
-        observedAt: '2026-06-10T00:00:00Z',
-      },
-    ],
-    emergencyContactPresent: true,
-  },
-
-  'M3D4-E5F6': {
-    card: {
-      issuer: 'Demo 서울대병원',
-      signatureVerified: true,
-      expiresAt: '2027-06-30T23:59:59+09:00',
-    },
-    items: [
-      {
-        code: 'DRUG_ALLERGY',
-        value: '알려진 알레르기 없음',
-        source: { type: 'USER_ASSERTED' },
-        verificationStatus: 'UNVERIFIED',
-        observedAt: '2026-08-25T00:00:00Z',
-      },
-      {
-        code: 'ANTICOAGULANT_FLAG',
-        value: '아니오',
-        source: { type: 'DEMO_ISSUER', displayName: '서울대병원' },
-        verificationStatus: 'TEST_VERIFIED',
-        observedAt: '2026-08-25T00:00:00Z',
-      },
-      {
-        code: 'EMERGENCY_NOTE',
-        value: '1형 당뇨 · 인슐린 펌프 착용 · 저혈당 시 포도당 즉시',
-        source: { type: 'DEMO_ISSUER', displayName: '서울대병원' },
-        verificationStatus: 'TEST_VERIFIED',
-        observedAt: '2026-08-25T00:00:00Z',
-      },
-    ],
-    emergencyContactPresent: true,
-  },
-};
-
-/** 데모 페르소나 목록 — Landing 화면 안내 카드에서 노출. */
-export const DEMO_PERSONA_LABELS: Array<{ code: string; label: string }> = [
-  { code: 'M3D1-7K9Q', label: '기본 데모 · 페니실린 알레르기' },
-  { code: 'M3D2-A1B2', label: '천식 · NSAIDs 알레르기' },
-  { code: 'M3D3-C3D4', label: '페이스메이커 · 항응고제' },
-  { code: 'M3D4-E5F6', label: '1형 당뇨 · 인슐린 펌프' },
-];
-
-function buildResponse(persona: DemoPersona): EmergencyAccessResponse {
+function buildMockResponse(): EmergencyAccessResponse {
   return {
     accessSessionId: newAccessSessionId(),
     demo: true,
     audience: 'BYSTANDER',
-    policyVersion: 3,
-    card: persona.card,
-    items: persona.items,
-    emergencyContactPresent: persona.emergencyContactPresent,
   };
 }
 
@@ -234,7 +81,7 @@ export async function requestEmergencyAccess(
       throw makeError('NETWORK');
     }
     if (!res.ok) throw errorFromStatus(res.status);
-    // 백엔드는 FHIR records[] 를 반환한다 — 화면이 쓰는 items[] 형태로 변환한다.
+    // 백엔드는 FHIR records[] 를 반환하지만, 화면은 더 이상 그 내용을 쓰지 않는다.
     const raw = (await res.json()) as BackendEmergencyAccessResponse;
     return adaptBackendResponse(raw);
   }
@@ -256,19 +103,28 @@ export async function requestEmergencyAccess(
     throw makeError('INVALID');
   }
 
-  // 등록된 페르소나면 그 데이터, 아니면 기본 페르소나로 폴백.
-  // 물리 QR/NFC 는 재사용 가능하므로 소진 처리 없음 — 매번 새 accessSessionId 로 응답.
-  const persona = PERSONAS[token] ?? PERSONAS['M3D1-7K9Q'];
-  return buildResponse(persona);
+  // 등록되지 않은 코드도 기본 데모 응답으로 폴백한다 (화면은 코드별로 다르지 않다).
+  return buildMockResponse();
 }
 
-// Triggers a server-mediated call to the patient's emergency contact WITHOUT
-// exposing the phone number to the BYSTANDER. Authenticated purely by the
-// short-lived opaque accessSessionId so no stable patient identifier crosses
-// the wire. Wire to POST /api/public/v1/emergency-contact/dial once available.
-export async function callEmergencyContact(_accessSessionId: string): Promise<void> {
-  await sleep(300);
-  return;
+// "신고 완료" 를 눌렀을 때 서버에 보내는 신호. 서버는 accessSessionId 로 세션을
+// 역추적해 보호자에게 문자/알림을 보낸다(발견자에게는 노출하지 않음). 발견자의
+// 다음 화면 진입(응급처치 가이드)을 이 호출의 성패로 막지 않는다 — 호출자가
+// 실패를 무시하고 항상 진행하도록 설계되어 있다.
+export async function completeReport(accessSessionId: string): Promise<void> {
+  if (!USE_REAL_BACKEND) {
+    await sleep(200);
+    return;
+  }
+  await fetch(
+    `/api/public/v1/emergency-access/${encodeURIComponent(accessSessionId)}/report-complete`,
+    {
+      method: 'POST',
+      cache: 'no-store',
+      referrerPolicy: 'no-referrer',
+      signal: AbortSignal.timeout(8_000),
+    },
+  );
 }
 
 function sleep(ms: number): Promise<void> {

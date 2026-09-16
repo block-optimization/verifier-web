@@ -1,9 +1,50 @@
 # 팀별 남은 작업
 
-실측 기준 2026-09-14 · 백엔드 `api-175-45-193-221.sslip.io` · 제출 **2026-09-21 (D-7)**
+실측 기준 2026-09-16 · 백엔드 `api-175-45-193-221.sslip.io` · 제출 **2026-09-21 (D-7)**
 
-verifier-web(발견자 웹)은 기능적으로 완료되어 이 문서에 할 일이 없다.
-남은 것은 **환자·의료진 앱 3건**과 **백엔드 2건**이다.
+verifier-web(발견자 웹)은 2026-09-16 자로 "환자 정보 열람" 화면에서 "119 신고 중심" 화면으로
+개편했다(EmergencyReport 화면, 위치 조회 · 신고 순서 안내 · 신고 완료 → 가이드 이동).
+그 결과 아래 **백엔드 신규 2건**과 **앱팀 확인 1건**이 추가로 필요하다.
+기존 "환자·의료진 앱 3건"·"백엔드 2건"은 그대로 유효하다(하단 유지).
+
+## ✅ 위치→주소 변환 — 2026-09-16, verifier-web 이 자체 구현 완료
+
+`POST /api/public/v1/location/reverse-geocode` 를 더 이상 백엔드팀에 요청하지 않는다.
+Naver Cloud Platform Maps 크리덴셜(Client ID/Secret)을 전달받아, verifier-web 저장소 안에
+**Netlify Function** (`netlify/functions/reverse-geocode.mts`) 으로 직접 구현하고 실제
+Naver API 로 검증까지 마쳤다(서울시청·설악산 좌표로 도로명/지번/건물명/산악 여부 확인).
+
+- Client Secret 은 Netlify Function 환경변수(`NAVER_MAPS_CLIENT_ID`/`NAVER_MAPS_CLIENT_SECRET`)
+  로만 존재하고 코드·git 에는 없다. **Netlify 사이트의 Environment variables 에 두 값을
+  등록해야** 배포본에서 동작한다.
+- 클라이언트 지도 SDK(`VITE_NAVER_MAPS_CLIENT_ID`, 위치 카드의 "지도로 보기" 토글)는 Naver
+  Cloud Platform 콘솔에 **이 배포 도메인을 "서비스 URL"로 등록**해야 지도 타일이 뜬다 —
+  등록 전에는 로컬(`localhost`)에서 401 로 지도만 안 뜨고 주소 텍스트는 정상 동작한다.
+- **⚠️ 이 Function 은 Netlify 배포에서만 동작한다.** 지금 실제 서비스 중인 주소
+  (`https://api-175-45-193-221.sslip.io/emergency`, `deploy-micro.yml`) 는 SSH 로 정적
+  파일만 올리는 NCP micro 라 서버 로직이 없다 — 그 경로로 계속 배포한다면 이 기능은
+  거기서는 계속 404 로 폴백(정상 동작하되 도로명 주소 대신 안내 문구)한다. Netlify 로
+  전환하거나, 백엔드가 같은 크리덴셜로 자기 서버에 동일 라우트를 추가해야 그 주소에서도 된다.
+
+## 🆕 백엔드팀 — verifier-web 119 개편에 따른 신규 1건
+
+### `POST /api/public/v1/emergency-access/{accessSessionId}/report-complete` (신규 엔드포인트)
+
+발견자가 "신고 완료" 를 누르면 보내는 신호. 서버가 accessSessionId 로 세션을 역추적해
+**보호자에게 문자/알림을 발송**한다(발견자에게는 전화번호도, 성공 여부도 노출하지 않음).
+Request/Response 는 body 없이 204 면 충분. 이 엔드포인트가 없어도(404) 프론트는 실패를
+무시하고 응급처치 가이드로 넘어가므로 데모 진행에는 지장 없다.
+
+**보호자(비상연락) DB 연결은 별도로 요청하지 않는다** — 이미 팀 로드맵에 있는 별도
+구현 예정 기능이라 지금 이 문서에서 새로 올리지 않는다. 다만 이 엔드포인트는 보호자
+연락처가 실제로 존재해야 의미가 있으므로, 그 기능이 붙기 전까지는 만들어도 우선순위가
+낮다는 점만 참고.
+
+또한 `docs/frontend-api-integration.md` §QR fragment 에 이미 기록된 QR 도메인 미해결
+이슈(`demo.medivc.invalid` 는 실제 폰 카메라로 스캔 불가)가 이번 개편으로 더 중요해졌다 —
+"QR을 찍는다" 가 새 플로우의 첫 단계이므로, 환자 앱이 `qrTicket` 으로
+`https://<verifier-web 배포 URL>/#ticket=<qrTicket>` 을 직접 조립해 QR 을 생성하는 경로가
+없으면 실제 기기 데모에서 QR 스캔 자체가 안 된다.
 
 ---
 

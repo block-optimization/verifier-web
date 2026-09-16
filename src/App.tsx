@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Landing } from './screens/Landing';
 import { Verifying } from './screens/Verifying';
-import { EmergencyInfo } from './screens/EmergencyInfo';
+import { EmergencyReport } from './screens/EmergencyReport';
 import { ErrorScreen } from './screens/ErrorScreen';
 import { Guide } from './screens/Guide';
 import {
@@ -17,7 +17,7 @@ import {
 type BaseScreen =
   | { kind: 'landing' }
   | { kind: 'verifying'; req: AccessRequest }
-  | { kind: 'info'; data: EmergencyAccessResponse }
+  | { kind: 'report'; data: EmergencyAccessResponse }
   | { kind: 'error'; error: AccessError };
 
 type Screen = BaseScreen | { kind: 'guide'; from: BaseScreen };
@@ -81,7 +81,7 @@ export function App() {
     (async () => {
       try {
         const data = await promise;
-        if (!cancelled) setScreen({ kind: 'info', data });
+        if (!cancelled) setScreen({ kind: 'report', data });
       } catch (err) {
         if (cancelled) return;
         const error: AccessError = isAccessError(err)
@@ -100,9 +100,9 @@ export function App() {
       return <Landing onSubmit={startVerification} onOpenGuide={openGuide} />;
     case 'verifying':
       return <Verifying />;
-    case 'info':
+    case 'report':
       return (
-        <EmergencyInfo
+        <EmergencyReport
           data={screen.data}
           onDone={() => setScreen({ kind: 'landing' })}
           onOpenGuide={openGuide}
