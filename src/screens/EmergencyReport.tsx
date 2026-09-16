@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import logo from '../assets/logo.png';
-import { DemoBanner } from '../components/DemoBanner';
 import { Call119Button } from '../components/Call119Button';
 import {
   getCurrentFix,
@@ -196,7 +195,6 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
       <header className="topbar">
         <img className="brand" src={logo} alt="MediVC 응급정보" />
       </header>
-      <DemoBanner />
 
       <div className="triage" role="alert">
         응급 상황이에요. 지금 바로 119에 신고하세요.

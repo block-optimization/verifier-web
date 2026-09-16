@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { DemoBanner } from '../components/DemoBanner';
 import { Call119Button } from '../components/Call119Button';
 import { fetchGuides, type GuideItem } from '../api/guides';
 
@@ -85,7 +84,6 @@ function GuideList({
         <div className="brand">응급처치 가이드</div>
         <span aria-hidden />
       </header>
-      <DemoBanner />
 
       <section className="guide-hero">
         <span className="guide-hero__eyebrow">Emergency First Aid</span>
@@ -179,8 +177,6 @@ function GuideDetail({
         </div>
         <span aria-hidden />
       </header>
-
-      <DemoBanner />
 
       <div className="triage" role="alert">
         먼저 의식 · 호흡을 확인하고 즉시 119에 신고하세요.
