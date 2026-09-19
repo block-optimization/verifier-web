@@ -1,5 +1,9 @@
 # Netlify 헤더 (netlify.toml 과 함께 belt-and-suspenders)
 #
+# 값은 netlify.toml 의 [[headers]] 와 **반드시 일치**시킨다. 예전에 이 파일만
+# `geolocation=()` 이라 119 화면의 위치 확인이 조용히 죽는 사고가 있었다
+# (netlify.toml 은 `geolocation=(self)` 였다). 한쪽만 고치지 말 것.
+#
 # `X-Content-Type-Options: nosniff` 가 켜져 있는 상태에서 Netlify 가 JS 파일을
 # `application/octet-stream` 으로 서빙하면 브라우저가 module script 실행을 거부한다.
 # 여기서 확장자별 Content-Type 을 못 박아 이 케이스를 강제로 막는다.
@@ -26,5 +30,5 @@
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=()
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://oapi.map.naver.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' data: https://oapi.map.naver.com https://map.pstatic.net https://simg.pstatic.net https://nrbe.map.naver.net https://ssl.pstatic.net; connect-src 'self' https://oapi.map.naver.com https://maps.apigw.ntruss.com https://naveropenapi.apigw.ntruss.com; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'

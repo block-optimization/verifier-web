@@ -42,7 +42,7 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium webkit
 
-      - name: E2E (마스터플랜 불변식 · 접근성 · P0-12 20회 연속)
+      - name: E2E (공통 진입 · 개인정보 비노출 · 위치 실패 · 접근성 · 20회 연속)
         run: npm test
 
       - name: Upload Playwright report on failure

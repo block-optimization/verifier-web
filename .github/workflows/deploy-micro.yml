@@ -28,7 +28,6 @@ jobs:
           cache: npm
       - name: Typecheck and build exact pushed revision
         env:
-          VITE_USE_REAL_BACKEND: 'true'
           # Naver Maps Client ID — safe to expose in the frontend bundle;
           # protected by the service-URL allowlist in the NCP console, not secrecy.
           VITE_NAVER_MAPS_CLIENT_ID: ${{ vars.NAVER_MAPS_CLIENT_ID }}

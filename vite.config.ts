@@ -23,10 +23,11 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       host: true,
-      // 최소 권한 — verifier-web 이 쓰는 공개 열람 경로만 forward 한다.
+      // 최소 권한 — 실제로 호출하는 경로 하나만 forward 한다.
       // netlify.toml 의 프로덕션 redirect 와 범위를 일치시켜 dev/prod 동작이 갈리지 않게 한다.
+      // 폐지된 공개 환자조회 경로는 dev 에서도 열지 않는다(FE 수정요청서 2026-09-20).
       proxy: {
-        '/api/public': proxyOptions,
+        '/api/public/v1/location/reverse-geocode': proxyOptions,
       },
     },
   };
