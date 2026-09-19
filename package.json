@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MediVC finder-facing mobile web — QR/manual code → filtered emergency info + 119 dock.",
+  "description": "MediVC finder-facing mobile web — one shared QR link → 119 report guidance, no per-patient lookup.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

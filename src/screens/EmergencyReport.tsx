@@ -10,8 +10,11 @@ import {
 } from '../api/location';
 
 // 119 신고 중심 피봇: 발견자에게 환자의 질병 · 약물 정보를 보여주지 않는다.
-// 대신 (1) 즉시 119 신고를 유도하고 (2) 통화 중 불러줄 정확한 위치와
-// (3) 무슨 말을 해야 할지 순서를 제공한 뒤 (4) 응급처치 가이드로 넘긴다.
+//
+// 화면 순서는 FE 수정요청서(2026-09-20) 「화면 흐름」을 그대로 따른다:
+//   응급상황인가요? → 119 전화 버튼 → 통화 연결 후 스피커폰 안내
+//   → 현재 위치 확인 → 신고 스크립트 → (신고 후) 응급처치 가이드
+// 어느 단계도 환자·카드 조회에 의존하지 않는다 — 위치 실패는 119 안내를 막지 않는다.
 
 type LocationState =
   | { status: 'loading' }
@@ -213,7 +216,15 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
       });
   }, []);
 
-  useEffect(loadLocation, [loadLocation]);
+  // 위치 API 는 "화면 진입 또는 사용자의 명시적 새로고침" 에만 호출한다
+  // (FE 수정요청서 2026-09-20 「위치 API」). 진입 1회를 ref 로 못박아 두면
+  // StrictMode 의 이중 마운트에서도 요청과 watchPosition 이 두 벌 생기지 않는다.
+  const autoLoaded = useRef(false);
+  useEffect(() => {
+    if (autoLoaded.current) return;
+    autoLoaded.current = true;
+    loadLocation();
+  }, [loadLocation]);
 
   const steps = buildSteps(location);
   const activeCase = locationCase(location);
@@ -274,12 +285,20 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
         <img className="brand" src={logo} alt="MediVC 응급정보" />
       </header>
 
-      <section className="report-block" aria-label="119 신고 안내 및 현재 위치">
+      <section className="report-block" aria-label="응급 신고 시작">
+        <h1 className="report-block__question">응급상황인가요?</h1>
         <p className="report-block__lede">
-          지금 바로 전화를 걸고 <strong>스피커폰</strong>으로 전환한 뒤, 아래 위치와 상황을 그대로 전달해 주세요.
+          환자가 의식이 없거나 숨을 제대로 쉬지 못하면 <strong>지금 바로 119에 전화</strong>하세요.
+          망설이지 말고 먼저 걸어도 됩니다.
         </p>
         <Call119Button variant="primary" />
+        <p className="report-block__speaker">
+          전화가 연결되면 <strong>스피커폰</strong>으로 바꾸고 휴대폰을 환자 옆에 내려놓으세요.
+          두 손이 비어야 상담원의 안내대로 처치할 수 있어요.
+        </p>
+      </section>
 
+      <section className="report-block" aria-label="현재 위치">
         <div className="report-block__label">위치</div>
         {location.status === 'loading' && <p className="hint">위치를 확인하는 중…</p>}
         {location.status === 'error' && (

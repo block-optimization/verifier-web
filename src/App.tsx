@@ -11,8 +11,18 @@ import { Guide } from './screens/Guide';
 // 분기하지 않고, 주소창·브라우저 히스토리에서만 blind 하게 제거한다 — 분석
 // 도구나 오류 수집기가 전체 URL을 긁어가도 참조값이 남지 않게 하기 위해서다.
 // 렌더 전에(모듈 최초 평가 시점) 실행해 화면에 fragment가 노출되지 않게 한다.
-if (typeof window !== 'undefined' && window.location.hash) {
+//
+// hashchange 도 같이 듣는다. 페이지를 열어 둔 채 팔찌를 다시 스캔하면 fragment 만
+// 바뀌는 same-document navigation 이라 모듈이 다시 평가되지 않는다. 그때 참조값이
+// 주소창에 그대로 남는 걸 E2E(soak)에서 잡았다.
+function stripFragment() {
+  if (!window.location.hash) return;
   history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+
+if (typeof window !== 'undefined') {
+  stripFragment();
+  window.addEventListener('hashchange', stripFragment);
 }
 
 type Screen = 'report' | 'guide';

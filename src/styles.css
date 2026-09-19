@@ -426,6 +426,26 @@ img.brand {
   color: var(--mv-text);
   word-break: keep-all;
 }
+/* 첫 화면의 물음("응급상황인가요?") — 발견자가 0.5초 안에 판단하도록 크게 둔다. */
+.report-block__question {
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--mv-text);
+  letter-spacing: -0.015em;
+  margin: 0;
+  word-break: keep-all;
+}
+/* 통화가 연결된 다음에 필요한 안내라 119 버튼 아래에 붙인다. */
+.report-block__speaker {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--mv-text-muted);
+  word-break: keep-all;
+}
+.report-block__speaker strong {
+  color: var(--mv-text);
+}
 .report-block__address {
   font-size: 22px;
   line-height: 1.3;
