@@ -30,9 +30,8 @@ cp .env.example .env.local          # 필요 시 값을 수정
 npm run dev                         # http://localhost:5173
 ```
 
-`.env.local` 의 `VITE_USE_REAL_BACKEND=false` 이면 mock 응답을 사용해 백엔드 없이
-전 화면 동작을 확인할 수 있다. 실서버 연동은 [BACKEND_INTEGRATION.md](docs/BACKEND_INTEGRATION.md)
-를 참고한다.
+백엔드 의존은 역지오코딩 하나뿐이라 대부분의 화면은 백엔드 없이 확인할 수 있다(위치 카드만
+실패 안내로 표시된다). 연동 계약은 [BACKEND_INTEGRATION.md](docs/BACKEND_INTEGRATION.md) 를 본다.
 
 ## Required checks
 
@@ -42,7 +41,7 @@ All PRs must pass:
 
 권장:
 
-- Playwright / Cypress E2E (P0-12 20회 연속 성공 시나리오) — 추후 추가 예정
+- `npm test` — Playwright E2E (공통 진입 · 개인정보 비노출 · 위치 실패 · 접근성 · 20회 연속)
 - Lighthouse mobile · accessibility 회귀 — 추후 추가 예정
 
 ## Boundaries

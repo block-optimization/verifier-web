@@ -27,25 +27,30 @@ OpenDID, Mobile ID, or W3C Verifiable Credentials conformance.
 The finder-facing web app enforces the following invariants. Any change that
 weakens them requires review under this policy:
 
-- QR ticket (`#ticket=<token>` / legacy `#t=<token>`) or reusable bracelet reference
-  (`#card=<reference>`) is carried in the URL fragment, stripped from the
-  address bar and history before the first render, and never written to logs or
-  localStorage. See `MEDIVC_MASTER_PLAN` §5.
-- A bracelet reference is valid until revocation and exchanges for a 120-second,
-  single-use PUBLIC ticket. It is not a patient ID. Copying a bracelet QR permits
-  repeated minimum-disclosure access until revoked; temporary tickets do not
-  prevent that. Responder access still requires backend-enforced authentication.
-- No blockchain client, wallet, or RPC library is bundled. Emergency access
-  responses are rendered without waiting for chain state; the finder is not the
+- The bracelet reference (`#card=<reference>`, legacy `#ticket=`/`#t=`) is carried
+  in the URL fragment. This app never reads it: it is stripped from the address bar
+  and history before the first render, and again on `hashchange`. It is never sent
+  to a server, analytics tool, error reporter, or log.
+- No per-patient lookup is performed. Every finder sees the same 119 guidance
+  regardless of which bracelet was scanned. Patient identification happens only in
+  the authenticated clinician app, enforced by the backend.
+- The retired public disclosure endpoints (`/api/public/v1/card-sessions`,
+  `/api/public/v1/emergency-access`, `report-complete`) are never called. Their 410
+  `PUBLIC_DISCLOSURE_RETIRED` means the capability was withdrawn, not that a patient
+  revoked a card, and must never be surfaced as a revocation.
+- The only backend call is `POST /api/public/v1/location/reverse-geocode`, which
+  receives coordinates alone. It creates no medical-access record and no chain event.
+  The Naver Maps client secret lives on the backend only, never in this bundle.
+- No patient name, medical information, guardian contact, or card-validity claim is
+  rendered. The UI never states that a card or patient was verified.
+- No blockchain client, wallet, or RPC library is bundled; the finder is not the
   audit consumer.
-- No stable patient identifier is present in the response body or subsequent
-  client-to-server calls. The opaque `accessSessionId` issued by the server is
-  the only handle used for follow-up actions (emergency-contact dial, etc.).
-- Failure states never render medical information. The 119 call button remains
-  reachable on every screen.
+- Failure states never block emergency use. The 119 call button remains reachable on
+  every screen, including when location permission is denied or the address lookup
+  returns 503.
 - No third-party analytics, telemetry, or error-reporting SDK is included by
-  default. Any addition must ship with a redaction filter that drops tickets,
-  session IDs, and PHI.
+  default. Any addition must ship with a redaction filter that drops URL fragments
+  and PHI.
 
 ## What must never be committed
 
@@ -53,4 +58,4 @@ weakens them requires review under this policy:
 - Any real patient, clinician, employee, or customer information — including
   in fixtures, screenshots, issue text, or Vercel/Netlify preview URLs
 - Signing keys, JWT signing secrets, or Backend `INTERNAL_SERVICE_TOKEN`
-- Screenshots that reveal QR tickets or manual codes for real cards
+- Screenshots that reveal the QR fragment of a real bracelet

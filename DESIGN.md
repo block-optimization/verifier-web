@@ -53,19 +53,20 @@ Reuse the four runtime radius sizes; no feature-local shape tokens.
 
 ## Components
 
-`App.tsx` owns landing → verifying → information/error transitions. Bracelet scanning
-uses the same Verifying, EmergencyInfo and ErrorScreen as existing ticket/manual entry.
-`api/emergencyAccess.ts` owns PUBLIC reference exchange and response adaptation.
-No responder authentication is simulated in this bystander viewer.
+`App.tsx` owns the report ↔ guide transition — there is no landing, verifying or error
+screen, because nothing is looked up. Every scan lands on `screens/EmergencyReport.tsx`:
+question → 119 button → speakerphone note → location → report script.
+`api/location.ts` owns geolocation and the backend reverse-geocode call.
 
-Strip QR fragments before rendering; never persist or log references or tickets.
-One scan performs one exchange and one consumption, including StrictMode effect replay.
-Network operations have a timeout; existing error recovery returns to scanning/manual entry.
+Strip QR fragments before rendering and on `hashchange`; never read, persist or log the
+reference. Call the location API once per entry (or on explicit retry), not per GPS event,
+including under StrictMode effect replay. Network operations have a timeout; location
+failure degrades to the official "address unknown" guidance.
 119 remains accessible on success and failure. Existing reduced-motion styles are retained.
 
 ## Do's and Don'ts
 
 - Do preserve the existing Korean copy and sibling screen layout.
-- Do use existing loading/error states for both request steps.
+- Do keep the location card's loading/error states visually secondary to the 119 action.
 - Do not display or cache raw bracelet references in a control or browser storage.
-- Do not claim temporary tickets prevent a copied bracelet QR from being reused.
+- Do not imply the card, the patient, or the bracelet was verified — nothing is checked.
