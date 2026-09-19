@@ -1,45 +1,65 @@
 import { expect, test } from '@playwright/test';
-import { DEMO, enterByFragment, expect119Reachable } from './helpers';
+import {
+  CARD_REFS,
+  enterByFragment,
+  expectCommonFinderScreen,
+  grantLocation,
+  mockReverseGeocode,
+} from './helpers';
 
 /*
- * 진입 경로 — 마스터플랜 §5 "QR URL fragment" · §0 "앱 설치 없이 5초 안에"
+ * 진입 경로 — FE 수정요청서(2026-09-20) 「구현 요청」 1 · 2 · 4항.
  *
- * fragment 키 3종이 모두 동작해야 한다:
- *   #card=   팔찌·스티커 (재사용 카드 참조)
- *   #ticket= 앱 화면 QR (백엔드 qrPayload)
- *   #t=      마스터플랜 §5 표기의 기존 데모 QR
+ * 팔찌와 환자 앱은 이제 같은 반영구 QR 하나를 쓴다:
+ *   https://<host>/emergency#card=<opaque-reference>
+ * 웹은 이 참조값으로 환자를 구분하지 않으므로, fragment 가 무엇이든 — 없어도 —
+ * 화면은 완전히 같아야 한다.
  */
+test.beforeEach(async ({ page }) => {
+  await mockReverseGeocode(page);
+  await grantLocation(page);
+});
+
 test.describe('QR 진입', () => {
   for (const key of ['card', 'ticket', 't'] as const) {
-    test(`#${key}= 로 들어오면 Landing 을 거치지 않고 곧장 응급정보`, async ({ page }) => {
-      await enterByFragment(page, key, DEMO.cpr);
-
-      // 수동코드 폼이 잠깐이라도 보이면 안 된다 (첫 렌더부터 verifying 이어야 함).
-      await expect(page.getByRole('button', { name: '코드로 열기' })).toHaveCount(0);
-
-      await expect(page.getByRole('region', { name: '응급 최소정보' })).toBeVisible();
-      await expect119Reachable(page);
+    test(`#${key}= 로 들어와도 공통 발견자 화면`, async ({ page }) => {
+      await enterByFragment(page, key, CARD_REFS.alpha);
+      await expectCommonFinderScreen(page);
     });
   }
 
-  test('토큰이 주소창·히스토리에서 제거된다 (§5)', async ({ page }) => {
-    await enterByFragment(page, 'ticket', DEMO.cpr);
-    await expect(page.getByRole('region', { name: '응급 최소정보' })).toBeVisible();
-
-    // fragment 가 남아 있으면 스크린샷·공유·히스토리로 토큰이 샌다.
-    expect(page.url()).not.toContain(DEMO.cpr);
-    expect(new URL(page.url()).hash).toBe('');
-  });
-
-  test('fragment 가 없으면 수동코드 화면', async ({ page }) => {
+  test('fragment 가 없어도 같은 공통 화면', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('button', { name: '코드로 열기' })).toBeVisible();
-    await expect119Reachable(page);
+    await expectCommonFinderScreen(page);
   });
 
-  test('깨진 fragment 는 정보를 렌더하지 않는다', async ({ page }) => {
+  test('깨진 fragment 도 같은 공통 화면 (파싱하지 않으므로)', async ({ page }) => {
     await page.goto('/#ticket=%E0%A4%A');
-    await expect(page.getByRole('region', { name: '응급 최소정보' })).toHaveCount(0);
-    await expect119Reachable(page);
+    await expectCommonFinderScreen(page);
+  });
+
+  test('서로 다른 환자 QR 이 글자 하나까지 같은 화면을 낸다', async ({ page }) => {
+    await enterByFragment(page, 'card', CARD_REFS.alpha);
+    await expectCommonFinderScreen(page);
+    const alpha = await page.locator('main').innerText();
+
+    await enterByFragment(page, 'card', CARD_REFS.beta);
+    await expectCommonFinderScreen(page);
+    const beta = await page.locator('main').innerText();
+
+    expect(beta, '환자별로 화면이 달라졌다 — 개인화가 남아 있다').toBe(alpha);
+  });
+
+  test('card 참조값이 주소창·히스토리에서 제거된다', async ({ page }) => {
+    await enterByFragment(page, 'card', CARD_REFS.alpha);
+    await expectCommonFinderScreen(page);
+
+    // fragment 가 남아 있으면 스크린샷·공유·히스토리로 참조값이 샌다.
+    expect(page.url()).not.toContain(CARD_REFS.alpha);
+    expect(new URL(page.url()).hash).toBe('');
+
+    // 뒤로 가기로도 되살아나면 안 된다 (pushState 가 아니라 replaceState 여야 함).
+    await page.goBack().catch(() => {});
+    expect(page.url()).not.toContain(CARD_REFS.alpha);
   });
 });

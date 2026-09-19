@@ -1,35 +1,37 @@
 import { expect, test } from '@playwright/test';
-import { DEMO, enterByFragment, expect119Reachable } from './helpers';
+import {
+  CARD_REFS,
+  enterByFragment,
+  expectCommonFinderScreen,
+  grantLocation,
+  mockReverseGeocode,
+} from './helpers';
 
 /*
- * 마스터플랜 P0-12 수용 기준 — "핵심 시나리오를 20회 연속 성공"
- *
- * 발표 당일 반복 시연에서 중간에 무너지지 않는지 본다. 상태가 누적되거나
- * 이벤트 리스너가 새면 회차가 갈수록 실패한다.
+ * 반복 시연 안정성 — 발표 당일 같은 팔찌를 수십 번 찍는다.
+ * 상태가 누적되거나 이벤트 리스너가 새면 회차가 갈수록 실패한다.
  */
-test('핵심 흐름 20회 연속 성공', async ({ page }) => {
+test.beforeEach(async ({ page }) => {
+  await mockReverseGeocode(page);
+  await grantLocation(page);
+});
+
+test('공통 화면 진입 20회 연속 성공', async ({ page }) => {
   test.slow(); // 20회 반복이라 기본 타임아웃으로는 부족하다.
 
-  const personas = Object.values(DEMO);
+  const refs = Object.values(CARD_REFS);
   for (let i = 0; i < 20; i += 1) {
-    const code = personas[i % personas.length];
-    await enterByFragment(page, 'card', code);
-
-    await expect(
-      page.getByRole('region', { name: '응급 최소정보' }),
-      `${i + 1}회차 실패 (code=${code})`,
-    ).toBeVisible();
-    await expect119Reachable(page);
+    const ref = refs[i % refs.length];
+    await enterByFragment(page, 'card', ref);
+    await expectCommonFinderScreen(page);
+    expect(page.url(), `${i + 1}회차에 fragment 가 남았다`).not.toContain(ref);
   }
 });
 
 test('같은 팔찌를 반복 스캔해도 계속 열린다', async ({ page }) => {
-  // 물리 팔찌는 재사용이 전제다. 같은 참조로 5회 연속 진입한다.
+  // 물리 팔찌는 반영구 재사용이 전제다. 카드가 폐기됐더라도 이 공통 안내는 열린다.
   for (let i = 0; i < 5; i += 1) {
-    await enterByFragment(page, 'card', DEMO.cpr);
-    await expect(
-      page.getByRole('region', { name: '응급 최소정보' }),
-      `${i + 1}회차 재스캔 실패`,
-    ).toBeVisible();
+    await enterByFragment(page, 'card', CARD_REFS.alpha);
+    await expectCommonFinderScreen(page);
   }
 });

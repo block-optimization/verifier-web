@@ -1,27 +1,81 @@
 import { expect, test } from '@playwright/test';
-import { DEMO, clickBelowDock, enterByFragment, enterByManualCode, expect119Reachable, expectNoForbiddenLabels } from './helpers';
+import {
+  CARD_REFS,
+  RETIRED_PATIENT_API,
+  clickBelowDock,
+  enterByFragment,
+  expect119Reachable,
+  expectCommonFinderScreen,
+  expectNoForbiddenText,
+  grantLocation,
+  mockReverseGeocode,
+} from './helpers';
 
 /*
- * 마스터플랜 불변식 — 화면이 바뀌어도 절대 깨지면 안 되는 것들.
- *   §0  발견자는 최소정보만 본다 · 안정적 환자 식별자 없음
- *   §5  토큰/의료정보를 로컬 저장소·로그에 남기지 않는다
- *   §7  119 는 어느 화면에서도 한 번에 닿는다
+ * 불변식 — 화면이 바뀌어도 절대 깨지면 안 되는 것들.
+ * FE 수정요청서(2026-09-20) 「보안 및 기록 기준」 · 「완료 확인」.
  */
+test.beforeEach(async ({ page }) => {
+  await mockReverseGeocode(page);
+  await grantLocation(page);
+});
+
 test('모든 화면에 119 전화가 살아 있다', async ({ page }) => {
-  await page.goto('/');
-  await expect119Reachable(page);
+  await enterByFragment(page, 'card', CARD_REFS.alpha);
+  await expectCommonFinderScreen(page);
 
   await clickBelowDock(page, /응급처치/);
   await expect119Reachable(page);
-
-  await enterByFragment(page, 'ticket', DEMO.cpr);
-  await expect(page.getByRole('region', { name: '응급 최소정보' })).toBeVisible();
-  await expect119Reachable(page);
 });
 
-test('브라우저 저장소에 아무것도 쓰지 않는다 (§5)', async ({ page }) => {
-  await enterByFragment(page, 'ticket', DEMO.cpr);
-  await expect(page.getByRole('region', { name: '응급 최소정보' })).toBeVisible();
+test('폐지된 공개 환자조회 API 를 호출하지 않는다', async ({ page }) => {
+  const calls: string[] = [];
+  page.on('request', (r) => {
+    if (RETIRED_PATIENT_API.test(r.url())) calls.push(`${r.method()} ${r.url()}`);
+  });
+
+  await enterByFragment(page, 'card', CARD_REFS.alpha);
+  await expectCommonFinderScreen(page);
+  await clickBelowDock(page, /응급처치/);
+
+  expect(calls, '폐지된 환자조회 API 를 호출했다').toEqual([]);
+});
+
+test('card 참조값을 네트워크로 내보내지 않는다', async ({ page }) => {
+  const leaked: string[] = [];
+  page.on('request', (r) => {
+    const body = r.postData() ?? '';
+    if (r.url().includes(CARD_REFS.alpha) || body.includes(CARD_REFS.alpha)) {
+      leaked.push(`${r.method()} ${r.url()}`);
+    }
+  });
+
+  await enterByFragment(page, 'card', CARD_REFS.alpha);
+  await expectCommonFinderScreen(page);
+
+  expect(leaked, 'card 참조값이 요청에 실려 나갔다').toEqual([]);
+});
+
+test('위치 API 는 진입 시 1회만 호출한다', async ({ page }) => {
+  let hits = 0;
+  page.on('request', (r) => {
+    if (r.url().includes('/location/reverse-geocode')) hits += 1;
+  });
+
+  await enterByFragment(page, 'card', CARD_REFS.alpha);
+  await expectCommonFinderScreen(page);
+  await expect(page.getByText('서울특별시청')).toBeVisible();
+
+  // GPS 는 연속 이벤트를 쏟아낸다. 그때마다 호출하면 안 된다.
+  await page.context().setGeolocation({ latitude: 37.5667, longitude: 126.9782, accuracy: 8 });
+  await page.waitForTimeout(1_500);
+
+  expect(hits, '역지오코딩이 여러 번 호출됐다').toBe(1);
+});
+
+test('브라우저 저장소에 아무것도 쓰지 않는다', async ({ page }) => {
+  await enterByFragment(page, 'card', CARD_REFS.alpha);
+  await expectCommonFinderScreen(page);
 
   const stored = await page.evaluate(() => ({
     local: Object.keys(localStorage),
@@ -33,28 +87,22 @@ test('브라우저 저장소에 아무것도 쓰지 않는다 (§5)', async ({ p
   expect(stored.cookie, 'cookie 가 남았다').toBe('');
 });
 
-test('콘솔에 토큰·의료정보를 흘리지 않는다 (§5 로그 마스킹)', async ({ page }) => {
+test('콘솔에 card 참조값을 흘리지 않는다', async ({ page }) => {
   const logs: string[] = [];
   page.on('console', (m) => logs.push(m.text()));
+  page.on('pageerror', (e) => logs.push(e.message));
 
-  await enterByFragment(page, 'ticket', DEMO.cpr);
-  await expect(page.getByRole('region', { name: '응급 최소정보' })).toBeVisible();
+  await enterByFragment(page, 'card', CARD_REFS.alpha);
+  await expectCommonFinderScreen(page);
 
-  const joined = logs.join('\n');
-  expect(joined).not.toContain(DEMO.cpr);
-  expect(joined).not.toContain('페니실린');
+  expect(logs.join('\n')).not.toContain(CARD_REFS.alpha);
 });
 
-test('발견자에게 금지된 항목이 노출되지 않는다 (§7 #8)', async ({ page }) => {
-  await enterByFragment(page, 'ticket', DEMO.cpr);
-  await expect(page.getByRole('region', { name: '응급 최소정보' })).toBeVisible();
-  await expectNoForbiddenLabels(page);
-});
+test('환자 정보·인증 완료 문구가 노출되지 않는다', async ({ page }) => {
+  await enterByFragment(page, 'card', CARD_REFS.alpha);
+  await expectCommonFinderScreen(page);
+  await expectNoForbiddenText(page);
 
-test('DEMO 고지가 모든 화면에 유지된다', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('note')).toContainText(/가상 환자|DEMO/);
-
-  await enterByManualCode(page, DEMO.cpr);
-  await expect(page.getByRole('note').first()).toContainText(/가상 환자|DEMO/);
+  await clickBelowDock(page, /응급처치/);
+  await expectNoForbiddenText(page);
 });
