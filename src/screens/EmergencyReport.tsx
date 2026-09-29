@@ -56,7 +56,10 @@ interface ReportStep {
   title: string;
   /** 말하기 전에 해야 할 확인 동작. */
   cue?: string;
+  /** 항상 펼쳐 두는 문장 — 흔한 경우만. */
   script?: ScriptLine[];
+  /** 덜 흔한 상황. 접어 두고 필요한 사람만 펼친다. */
+  extra?: ScriptLine[];
   /** 문장 뒤에 붙는 보충 안내. */
   detail?: string;
 }
@@ -79,31 +82,43 @@ function locationStep(location: LocationState): ReportStep {
   }
 
   if (location.status === 'ready' && location.spokenAddress) {
-    // 주소 한 줄로는 구급대가 환자 앞까지 못 온다. 동 · 호 · 층을 덧붙일 자리를
-    // 상황별로 열어 둔다 — 어느 쪽인지는 발견자가 눈으로 보고 고른다.
-    const script: ScriptLine[] = [
-      { say: `${location.spokenAddress}입니다.` },
-      { when: '아파트 · 빌라라면', say: '◯◯◯동 ◯◯◯호입니다.' },
-      { when: '상가 · 사무실이라면', say: '◯층 ◯◯◯호입니다.' },
-      { when: '지하 · 주차장이라면', say: '지하 ◯층 주차장입니다.' },
-      { when: '지하철역이라면', say: '◯◯역 ◯번 출구 쪽입니다.' },
-      { when: '공원 · 하천이라면', say: '◯◯공원 ◯◯◯ 입구 근처입니다.' },
-      { when: '도로 · 차 안이라면', say: '◯◯ 방향 도로 위입니다.' },
-      { when: '건물 밖이라면', say: '건물 밖 길가입니다.' },
-    ];
-    if (location.isMountainous) {
-      script.push(
-        { when: '산이라면', say: '국가지점번호 ◯◯ ◯◯◯◯ ◯◯◯◯입니다.' },
-        { when: '표지판이 안 보이면', say: '가장 가까운 등산로 입구는 ◯◯◯입니다.' },
-      );
-    }
-    return {
-      ...base,
-      script,
-      detail: location.isMountainous
-        ? '국가지점번호판은 등산로 옆에 서 있고, 한글 두 글자와 숫자 여덟 자리로 되어 있습니다. 119 산악위치표지판 번호도 같은 용도로 쓸 수 있어요.'
-        : '구급대가 들어오는 길이 막혀 있으면(정문 잠김 · 좁은 골목 · 주차된 차) 그것도 함께 말해 주세요.',
-    };
+    // 어느 상황인지는 화면이 판단한다. 역지오코딩이 산악 지목을 주면 산, 건물명을
+    // 주면 건물(이름으로 아파트/그 외를 가른다), 둘 다 없으면 실외로 본다.
+    // 발견자에게 전 상황을 나열해 고르게 하지 않는다 — 고르는 데 시간이 든다.
+    const address: ScriptLine = { say: `${location.spokenAddress}입니다.` };
+    const APARTMENT = /아파트|APT|빌라|연립|주공|타운|자이|래미안|푸르지오|힐스테이트|e편한세상|캐슬|더샵/i;
+
+    const cases = {
+      mountain: {
+        script: [
+          { when: '표지판이 보이면', say: '국가지점번호 ◯◯ ◯◯◯◯ ◯◯◯◯입니다.' },
+          { when: '표지판이 없으면', say: '가장 가까운 등산로 입구는 ◯◯◯입니다.' },
+        ],
+        detail: '국가지점번호판은 등산로 옆에 서 있고, 한글 두 글자와 숫자 여덟 자리입니다.',
+      },
+      apartment: {
+        script: [{ say: '◯◯◯동 ◯◯◯호입니다.' }],
+        detail: '동 · 호수는 현관이나 우편함에 적혀 있습니다. 공동현관이 잠겨 있으면 그것도 말해 주세요.',
+      },
+      building: {
+        script: [{ say: '◯층 ◯◯◯호입니다.' }],
+        detail: '건물 밖이라면 “건물 밖 길가입니다” 라고 알려 주세요. 들어오는 길이 막혀 있으면(정문 잠김 · 좁은 골목 · 주차된 차) 함께 말합니다.',
+      },
+      outdoor: {
+        script: [{ when: '눈에 띄는 게 있으면', say: '근처에 ◯◯◯가 보입니다.' }],
+        detail: '건물 안이라면 층과 호수를, 지하라면 지하 몇 층인지 덧붙여 주세요.',
+      },
+    } as const;
+
+    const picked = location.isMountainous
+      ? cases.mountain
+      : location.buildingName
+        ? APARTMENT.test(location.buildingName)
+          ? cases.apartment
+          : cases.building
+        : cases.outdoor;
+
+    return { ...base, script: [address, ...picked.script], detail: picked.detail };
   }
 
   // 주소를 못 잡았거나 좌표만 있는 경우 — 모른다고 말하는 것도 상담원에게는 유효한
@@ -113,9 +128,11 @@ function locationStep(location: LocationState): ReportStep {
     script: [
       { say: '정확한 주소는 모르겠습니다.' },
       { when: '간판이 보이면', say: '근처에 ◯◯◯가 보입니다.' },
+      { when: '전봇대가 보이면', say: '전봇대 번호는 ◯◯◯◯◯◯◯◯입니다.' },
+    ],
+    extra: [
       { when: '건물 안이라면', say: '엘리베이터에 붙은 번호는 ◯◯◯◯입니다.' },
       { when: '지하라면', say: '지하라서 위치가 안 잡히는 것 같습니다.' },
-      { when: '전봇대가 보이면', say: '전봇대 번호는 ◯◯◯◯◯◯◯◯입니다.' },
       { when: '버스정류장이 보이면', say: '◯◯◯ 정류장 앞입니다.' },
       { when: '고속도로라면', say: '◯◯고속도로 ◯◯◯킬로미터 지점입니다.' },
       { when: '산이라면', say: '국가지점번호 ◯◯ ◯◯◯◯ ◯◯◯◯입니다.' },
@@ -141,25 +158,20 @@ function buildSteps(location: LocationState): ReportStep[] {
     },
     locationStep(location),
     {
-      title: '환자 상태 말하기',
+      // 환자 상태는 화면이 판단할 수 없다. 그렇다고 가능한 상태를 전부 나열하면
+      // 자기 경우를 찾는 데 시간이 든다 — 본 대로 채우는 한 문장으로 둔다.
+      title: '환자 상태 · 질환 말하기',
       cue: '어깨를 두드리며 “괜찮으세요?” 하고 물어본 뒤, 가슴이 오르내리는지 보세요.',
-      script: [
-        { when: '반응도 숨도 없으면', say: '의식이 없고 숨을 쉬지 않습니다.' },
-        { when: '숨만 쉬고 있으면', say: '의식이 없지만 숨은 쉬고 있습니다.' },
-        { when: '말을 할 수 있으면', say: '의식은 있는데 ◯◯◯가 아프다고 합니다.' },
-        { when: '경련 중이면', say: '몸을 떨면서 경련하고 있습니다.' },
-        { when: '피가 많이 나면', say: '◯◯◯에서 피가 많이 납니다.' },
-        { when: '넘어지거나 부딪혔으면', say: '◯◯◯에서 떨어져 다친 것 같습니다.' },
-        { when: '어린아이라면', say: '어린아이입니다.' },
-      ],
+      script: [{ say: '지금 ◯◯◯ 상태입니다.' }],
+      detail: '보이는 대로 말하세요 — 의식 없음 · 숨 안 쉼 · 경련 · 출혈 · 떨어짐처럼 눈에 보이는 것이면 됩니다.',
     },
     {
       title: '환자 나이 · 지병 말하기',
       script: [
         { say: '나이와 지병은 모르겠습니다.' },
         { when: '아는 경우에만', say: '◯◯살이고, 평소 ◯◯◯ 약을 드십니다.' },
-        { when: '주변에 약 · 주사기가 있으면', say: '옆에 ◯◯◯가 떨어져 있습니다.' },
       ],
+      extra: [{ when: '주변에 약 · 주사기가 있으면', say: '옆에 ◯◯◯가 떨어져 있습니다.' }],
     },
     {
       title: '신고자 본인 이름 · 연락 가능한 번호 말하기',
@@ -173,8 +185,8 @@ function buildSteps(location: LocationState): ReportStep[] {
       script: [
         { say: '스피커폰으로 바꿨습니다.' },
         { say: '무엇을 하면 될까요?' },
-        { when: '주변에 사람이 있으면', say: '자동심장충격기를 가져오라고 하겠습니다.' },
       ],
+      extra: [{ when: '주변에 사람이 있으면', say: '자동심장충격기를 가져오라고 하겠습니다.' }],
       detail: '상담원이 알려주는 대로 하세요. 숨을 쉬지 않으면 가슴 중앙을 강하고 빠르게 누르라고 안내합니다.',
     },
   ];
@@ -190,6 +202,19 @@ function withBlanks(say: string) {
     ) : (
       part
     ),
+  );
+}
+
+function ScriptLines({ lines }: { lines: ScriptLine[] }) {
+  return (
+    <>
+      {lines.map((line) => (
+        <div className="script" key={line.say}>
+          {line.when && <div className="script__when">{line.when}</div>}
+          <p className="script__say">“{withBlanks(line.say)}”</p>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -439,12 +464,13 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
             <li className="step-list__item" key={step.title}>
               <div className="step-list__title">{step.title}</div>
               {step.cue && <div className="step-list__detail">{step.cue}</div>}
-              {step.script?.map((line) => (
-                <div className="script" key={line.say}>
-                  {line.when && <div className="script__when">{line.when}</div>}
-                  <p className="script__say">“{withBlanks(line.say)}”</p>
-                </div>
-              ))}
+              {step.script && <ScriptLines lines={step.script} />}
+              {step.extra && step.extra.length > 0 && (
+                <details className="script-more">
+                  <summary>다른 상황이면</summary>
+                  <ScriptLines lines={step.extra} />
+                </details>
+              )}
               {step.detail && <div className="step-list__detail">{step.detail}</div>}
             </li>
           ))}
