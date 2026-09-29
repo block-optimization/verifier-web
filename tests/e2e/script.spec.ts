@@ -18,7 +18,7 @@ const CORE_SCRIPT = [
   '의식이 없지만 숨은 쉬고 있습니다.',
   '나이와 지병은 모르겠습니다.',
   '제 이름은',
-  '네, 스피커폰으로 바꿨습니다.',
+  '스피커폰으로 바꿨습니다.',
 ];
 
 test('6단계 대본 문장이 그대로 화면에 있다', async ({ page }) => {
@@ -39,8 +39,11 @@ test('확인된 주소가 대본 문장 안에 들어간다', async ({ page }) =
 
   // 위치 카드의 표시용 주소가 아니라, 읽을 수 있는 한 문장으로 나와야 한다.
   await expect(page.getByText('서울특별시 중구 세종대로 110입니다.')).toBeVisible();
-  // 건물명이 잡히면 층·호 빈칸을 덧붙인다 (건물 "앞"이라고 단정하지는 않는다).
-  await expect(page.getByText('◯층 ◯호입니다.')).toBeVisible();
+  // 주소 한 줄로는 환자 앞까지 못 온다 — 동·호·층을 덧붙일 자리를 상황별로 연다.
+  await expect(page.getByText('◯◯◯동 ◯◯◯호입니다.')).toBeVisible();
+  await expect(page.getByText('◯층 ◯◯◯호입니다.')).toBeVisible();
+  await expect(page.getByText('지하 ◯층 주차장입니다.')).toBeVisible();
+  // 건물명이 잡혀도 환자가 그 건물 "앞"에 있다고 단정하지 않는다.
   await expect(page.locator('main')).not.toContainText('서울특별시청 건물입니다');
 });
 
@@ -60,7 +63,8 @@ test('산악이면 국가지점번호 문장을 덧붙인다', async ({ page }) 
   await grantLocation(page);
   await enterByFragment(page, 'card', CARD_REFS.alpha);
 
-  await expect(page.getByText('국가지점번호 ◯◯◯◯입니다.')).toBeVisible();
+  await expect(page.getByText('국가지점번호 ◯◯ ◯◯◯◯ ◯◯◯◯입니다.')).toBeVisible();
+  await expect(page.getByText('가장 가까운 등산로 입구는 ◯◯◯입니다.')).toBeVisible();
 });
 
 test('주소를 못 잡으면 모른다고 말하는 문장을 준다', async ({ page }) => {
@@ -69,6 +73,9 @@ test('주소를 못 잡으면 모른다고 말하는 문장을 준다', async ({
   await expectCommonFinderScreen(page);
 
   await expect(page.getByText('정확한 주소는 모르겠습니다.', { exact: false })).toBeVisible();
+  // 소방청이 안내하는 대체 수단을 문장으로 펼쳐 둔다.
+  await expect(page.getByText('전봇대 번호는 ◯◯◯◯◯◯◯◯입니다.')).toBeVisible();
+  await expect(page.getByText('◯◯고속도로 ◯◯◯킬로미터 지점입니다.')).toBeVisible();
   // 나머지 단계의 대본은 위치와 무관하게 그대로 있어야 한다.
   await expect(page.getByText('환자가 있습니다.').first()).toBeVisible();
 });
