@@ -489,21 +489,43 @@ img.brand {
   font-size: 15.5px;
   font-weight: 700;
 }
-/* 위치 케이스 안내 — 한 번에 하나만 굵게 강조해서 보여준다. */
-.location-case {
+/* -------------------------------------------------------------------------
+ * 신고 대본 — 따옴표 안의 문장을 그대로 읽는다.
+ *
+ * 단계 제목("환자 상태 말하기")이 뭘 말할지를 알려준다면, 이 블록은 실제로 뱉을
+ * 문장을 준다. 당황한 발견자가 문장을 조립하지 않아도 되게 하는 게 목적이라
+ * 제목·보조설명보다 크고 진하게 둔다.
+ * ------------------------------------------------------------------------- */
+.script {
   margin-top: 8px;
-  padding: 10px 12px;
-  background: var(--mv-warn-bg);
-  color: var(--mv-warn-fg);
-  border: 1px solid var(--mv-warn-border);
-  border-radius: var(--mv-radius-md);
-  font-size: 13.5px;
+}
+.script + .script {
+  margin-top: 6px;
+}
+/* 이 문장을 읽을 조건 ("반응도 숨도 없으면") */
+.script__when {
+  font-size: 12.5px;
   font-weight: 600;
-  line-height: 1.5;
+  color: var(--mv-text-muted);
+  line-height: 1.4;
+  margin-bottom: 3px;
   word-break: keep-all;
 }
-.location-case strong {
-  font-weight: 800;
+.script__say {
+  padding: 9px 12px;
+  background: var(--mv-surface);
+  border: 1px solid var(--mv-border);
+  border-left: 3px solid var(--mv-key);
+  border-radius: var(--mv-radius-md);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--mv-text);
+  word-break: keep-all;
+}
+/* 발견자가 눈앞을 보고 채우는 자리 */
+.script__blank {
+  color: var(--mv-key);
 }
 
 /* -------------------------------------------------------------------------

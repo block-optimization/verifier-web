@@ -23,7 +23,10 @@ type LocationState =
       lat: number;
       lng: number;
       accuracyMeters: number;
+      /** 화면에 보여주는 표기 (지번이면 "(지번)" 꼬리표가 붙는다). */
       addressLine: string;
+      /** 119에 그대로 읽어 주는 주소. 좌표뿐이면 없다. */
+      spokenAddress?: string;
       addressSource: 'road' | 'jibun' | 'coords';
       buildingName?: string;
       isMountainous?: boolean;
@@ -42,75 +45,119 @@ const LOCATION_ERROR_COPY: Record<LocationErrorReason, string> = {
   NETWORK: `주소 변환 서버에 연결할 수 없어요. ${ADDRESS_UNKNOWN_TIP}`,
 };
 
-/*
- * 위치 케이스 — 한 번에 하나만 보여준다(너무 길면 안 읽힌다).
- * 전부 공식 소방기관 자료로 검증됨:
- *  · 건물명·층수 예시("2층 집이예요") — 대전광역시 소방본부 119 신고요령
- *  · 국가지점번호 · 등산로 위치표지판(산 속) — 소방청 · 대전소방본부 · 충남소방본부 공통
- *  · 전봇대 "위험" 문구 아래 8자리, 큰 건물 상호 — 충남소방본부 · 소방청
- */
-type LocationCase = 'building' | 'mountain' | 'unclear' | null;
-
-function locationCase(location: LocationState): LocationCase {
-  if (location.status !== 'ready') return null;
-  if (location.buildingName) return 'building';
-  if (location.isMountainous) return 'mountain';
-  if (location.addressSource === 'coords') return 'unclear';
-  return null;
+/** 따옴표째 그대로 읽는 문장. `◯` 는 발견자가 눈앞을 보고 채우는 빈칸이다. */
+interface ScriptLine {
+  /** 이 문장을 읽을 조건. 선택지가 하나뿐이면 생략한다. */
+  when?: string;
+  say: string;
 }
-
-const LOCATION_CASE_COPY: Record<Exclude<LocationCase, null>, { label: string; detail: string }> = {
-  building: {
-    label: '건물 안이라면',
-    detail: '층수 · 호실을 함께 말하세요. (예: “OO빌딩 2층”)',
-  },
-  mountain: {
-    label: '산악 지역이에요',
-    detail: '등산로의 119 위치표지판 번호나 국가지점번호판이 보이면 그 번호를 알려주세요.',
-  },
-  unclear: {
-    label: '특정하기 어려운 위치예요',
-    detail: '근처 큰 건물 상호, 버스정류장 이름, 전봇대의 "위험" 글자 아래 8자리 중 보이는 것을 알려주세요.',
-  },
-};
 
 interface ReportStep {
   title: string;
+  /** 말하기 전에 해야 할 확인 동작. */
+  cue?: string;
+  script?: ScriptLine[];
+  /** 문장 뒤에 붙는 보충 안내. */
   detail?: string;
-  isLocationStep?: boolean;
 }
 
 /**
- * 소방청 "119 구급신고 요령"(6단계)을 그대로 따른다 — §10 원칙과 동일하게
- * 생성형 AI가 절차를 새로 만들지 않고 공식 출처의 사실·순서만 옮긴다.
- * 발견자 화면은 환자의 질병 · 나이 정보를 갖고 있지 않으므로(§ 119 신고 중심 피봇),
- * 해당 단계는 발견자가 직접 확인해 말하도록 안내만 한다.
+ * 위치 단계의 대본 — 화면이 실제로 아는 주소만 문장에 넣는다.
+ *
+ * 건물명이 잡혀도 "OO빌딩 앞입니다" 같은 문장은 만들지 않는다. 역지오코딩이 알려주는 건
+ * 그 좌표의 건물이지 환자가 그 건물 앞에 있다는 사실이 아니다. 대신 발견자가 직접 보고
+ * 채우는 빈칸("◯층 ◯호")으로 남긴다.
+ *
+ * 주소를 모를 때의 대안(큰 건물 상호 · 전봇대 번호 · 국가지점번호)은 소방청 ·
+ * 행정안전부 안전배움터 「119 구급신고 요령」의 안내를 그대로 따른다.
+ */
+function locationStep(location: LocationState): ReportStep {
+  const base = { title: '정확한 위치 말하기' } as const;
+
+  if (location.status === 'loading') {
+    return { ...base, detail: '위 위치 카드에 주소가 뜨면 그대로 읽어 주세요.' };
+  }
+
+  if (location.status === 'ready' && location.spokenAddress) {
+    const script: ScriptLine[] = [{ say: `${location.spokenAddress}입니다.` }];
+    if (location.buildingName) {
+      script.push({ when: '건물 안이라면', say: '◯층 ◯호입니다.' });
+    }
+    if (location.isMountainous) {
+      script.push({ when: '산에 있다면', say: '국가지점번호 ◯◯◯◯입니다.' });
+    }
+    return {
+      ...base,
+      script,
+      detail: location.isMountainous
+        ? '등산로의 119 위치표지판이나 국가지점번호판이 보이면 그 번호를 읽어 주세요.'
+        : undefined,
+    };
+  }
+
+  // 주소를 못 잡았거나 좌표만 있는 경우 — 모른다고 말하는 것도 상담원에게는 유효한 정보다.
+  return {
+    ...base,
+    script: [{ say: '정확한 주소는 모르겠습니다. 근처에 ◯◯◯가 보입니다.' }],
+    detail: ADDRESS_UNKNOWN_TIP,
+  };
+}
+
+/**
+ * 소방청 「119 구급신고 요령」 6단계를 따른다 — §10 원칙과 동일하게 생성형 AI가 절차를
+ * 새로 만들지 않고 공식 출처의 순서와 예시 문장을 옮긴다.
+ * (소방청 nfa.go.kr · 행정안전부 안전배움터 · 중앙응급의료센터 E-Gen)
+ *
+ * 원문 예시에서 4단계만 뒤집었다. 원문은 `"65살이고 평소에 심장병이 있어서 약을 드세요"`
+ * 처럼 가족이 신고하는 상황을 전제하는데, 이 화면의 사용자는 모르는 사람을 발견한
+ * 행인이다. 모른다고 답하는 것을 기본 문장으로 두고 아는 경우를 예외로 뺐다.
  */
 function buildSteps(location: LocationState): ReportStep[] {
-  const locationDetail =
-    location.status === 'ready'
-      ? '위 위치 카드의 주소를 그대로 전달하세요.'
-      : location.status === 'error'
-        ? ADDRESS_UNKNOWN_TIP
-        : '위 위치 카드에 확인되는 대로 그 주소를 전달하세요.';
-
   return [
-    { title: '“환자가 있습니다”라고 먼저 알리기' },
-    { title: '정확한 위치 말하기', detail: locationDetail, isLocationStep: true },
+    {
+      title: '“환자가 있습니다”라고 먼저 알리기',
+      script: [{ say: '환자가 있습니다.' }],
+    },
+    locationStep(location),
     {
       title: '환자 상태 말하기',
-      detail: '아픈 부위 · 의식 유무 · 호흡 여부를 확인해 전달하세요.',
+      cue: '어깨를 두드리며 “괜찮으세요?” 하고 물어본 뒤, 가슴이 오르내리는지 보세요.',
+      script: [
+        { when: '반응도 숨도 없으면', say: '의식이 없고 숨을 쉬지 않습니다.' },
+        { when: '숨만 쉬고 있으면', say: '의식이 없지만 숨은 쉬고 있습니다.' },
+        { when: '말을 할 수 있으면', say: '의식은 있는데 ◯◯◯가 아프다고 합니다.' },
+      ],
     },
     {
       title: '환자 나이 · 지병 말하기',
-      detail: '나이와 평소 앓는 지병, 복용 중인 약을 아는 경우에만 알려주세요.',
+      script: [
+        { say: '나이와 지병은 모르겠습니다.' },
+        { when: '아는 경우에만', say: '◯◯살이고, 평소 ◯◯◯ 약을 드십니다.' },
+      ],
     },
-    { title: '신고자 본인 이름 · 연락 가능한 번호 말하기' },
+    {
+      title: '신고자 본인 이름 · 연락 가능한 번호 말하기',
+      script: [{ say: '제 이름은 ◯◯◯이고, 지금 이 번호로 통화 가능합니다.' }],
+    },
     {
       title: '전화를 끊지 말고 상담원 지시 따르기',
-      detail: '의료지도를 받으며 침착하게 처치를 이어가세요.',
+      script: [{ say: '네, 스피커폰으로 바꿨습니다. 무엇을 하면 될까요?' }],
+      detail: '상담원이 알려주는 대로 하세요. 숨을 쉬지 않으면 가슴 중앙을 강하고 빠르게 누르라고 안내합니다.',
     },
   ];
+}
+
+/** `◯` 빈칸만 색을 달리해 "여기는 내가 채운다"가 한눈에 보이게 한다. */
+function withBlanks(say: string) {
+  return say.split(/(◯+)/).map((part, i) =>
+    part.startsWith('◯') ? (
+      <span className="script__blank" key={i}>
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
 }
 
 interface NaverLatLng {
@@ -191,12 +238,19 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
             isMountainous: geo.isMountainous,
           } as const;
           if (geo.roadAddress) {
-            setLocation({ status: 'ready', ...base, addressLine: geo.roadAddress, addressSource: 'road' });
+            setLocation({
+              status: 'ready',
+              ...base,
+              addressLine: geo.roadAddress,
+              spokenAddress: geo.roadAddress,
+              addressSource: 'road',
+            });
           } else if (geo.jibunAddress) {
             setLocation({
               status: 'ready',
               ...base,
               addressLine: `${geo.jibunAddress} (지번)`,
+              spokenAddress: geo.jibunAddress,
               addressSource: 'jibun',
             });
           } else {
@@ -227,7 +281,6 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
   }, [loadLocation]);
 
   const steps = buildSteps(location);
-  const activeCase = locationCase(location);
 
   function handleMapToggle(e: SyntheticEvent<HTMLDetailsElement>) {
     if (!e.currentTarget.open) return;
@@ -352,17 +405,21 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
           {steps.map((step) => (
             <li className="step-list__item" key={step.title}>
               <div className="step-list__title">{step.title}</div>
-              {step.detail && <div className="step-list__detail">{step.detail}</div>}
-              {step.isLocationStep && activeCase && (
-                <div className="location-case">
-                  <strong>{LOCATION_CASE_COPY[activeCase].label}</strong>{' '}
-                  {LOCATION_CASE_COPY[activeCase].detail}
+              {step.cue && <div className="step-list__detail">{step.cue}</div>}
+              {step.script?.map((line) => (
+                <div className="script" key={line.say}>
+                  {line.when && <div className="script__when">{line.when}</div>}
+                  <p className="script__say">“{withBlanks(line.say)}”</p>
                 </div>
-              )}
+              ))}
+              {step.detail && <div className="step-list__detail">{step.detail}</div>}
             </li>
           ))}
         </ol>
-        <p className="hint">출처: 소방청 · 대전광역시 소방본부 · 충남소방본부 119 신고요령</p>
+        <p className="hint">
+          따옴표 안의 문장을 그대로 읽으세요. <span className="script__blank">◯</span> 자리는 보고
+          채우면 됩니다. 출처: 소방청 · 행정안전부 안전배움터 119 구급신고 요령
+        </p>
       </section>
 
       <div className="actions">

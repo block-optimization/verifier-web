@@ -67,7 +67,7 @@ test('도로명 주소가 없으면 지번으로 대체한다', async ({ page })
 
   await expect(page.getByText(/용대리 산 12 \(지번\)/)).toBeVisible();
   // 산악이면 국가지점번호 안내로 전환된다.
-  await expect(page.getByText(/국가지점번호/)).toBeVisible();
+  await expect(page.getByText(/국가지점번호/).first()).toBeVisible();
   await expect119Reachable(page);
 });
 
