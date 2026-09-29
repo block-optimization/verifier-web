@@ -526,6 +526,7 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
         <ol className="step-list step-list--emphasis">
           {steps.map((step) => (
             <li className="step-list__item" key={step.title}>
+              <div className="step-list__body">
               {step.cue && <div className="step-list__detail">{step.cue}</div>}
               {step.script && <ScriptLines lines={step.script} />}
               {step.detail && <div className="step-list__detail">{step.detail}</div>}
@@ -547,6 +548,7 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
                   })}
                 </div>
               )}
+              </div>
             </li>
           ))}
         </ol>

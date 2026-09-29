@@ -67,7 +67,7 @@
   --safe-right: env(safe-area-inset-right, 0px);
 
   --page-max: 480px;
-  --sticky-h: 132px;
+  --sticky-h: 82px;
 }
 
 /* -------------------------------------------------------------------------
@@ -143,7 +143,7 @@ input {
   padding:
     calc(var(--safe-top) + 10px)
     max(20px, var(--safe-left))
-    calc(var(--safe-bottom) + var(--sticky-h) + 28px)
+    calc(var(--safe-bottom) + var(--sticky-h) + 12px)
     max(20px, var(--safe-right));
   display: flex;
   flex-direction: column;
@@ -543,6 +543,35 @@ img.brand {
   font-size: 14.5px;
   font-weight: 600;
   text-wrap: balance;
+}
+
+/*
+ * 번호와 대사의 세로 정렬.
+ *
+ * 번호를 absolute 로 띄워 두면 단계마다 첫 요소(대사 상자 · 확인 안내)의 높이가
+ * 달라 줄이 어긋난다. flex 로 나란히 놓고 번호를 첫 줄 가운데에 맞춘다. 첫 요소가
+ * 확인 안내(작은 글씨)인 단계는 그만큼 덜 내린다.
+ * Guide 화면의 `.step-list` 는 이 레이아웃을 쓰지 않으므로 --emphasis 로 좁힌다.
+ */
+.step-list--emphasis .step-list__item {
+  display: flex;
+  gap: 10px;
+  padding-left: 0;
+}
+.step-list--emphasis .step-list__item::before {
+  position: static;
+  flex: 0 0 26px;
+  margin-top: 7.5px;
+}
+.step-list--emphasis .step-list__item:has(> .step-list__body > .step-list__detail:first-child)::before {
+  margin-top: -3px;
+}
+.step-list__body {
+  flex: 1;
+  min-width: 0;
+}
+.step-list__body > *:first-child {
+  margin-top: 0;
 }
 /* -------------------------------------------------------------------------
  * 신고 대본 — 따옴표 안의 문장을 그대로 읽는다.
