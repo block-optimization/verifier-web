@@ -19,8 +19,6 @@ const CORE_SCRIPT = [
   '환자가 있습니다.',
   '지금 ◯◯◯ 상태입니다.',
   '나이와 지병은 모르겠습니다.',
-  '제 이름은',
-  '스피커폰으로 바꿨습니다.',
 ];
 
 test('6단계 대본 문장이 그대로 화면에 있다', async ({ page }) => {
@@ -32,6 +30,11 @@ test('6단계 대본 문장이 그대로 화면에 있다', async ({ page }) => 
   for (const line of CORE_SCRIPT) {
     await expect(page.getByText(line, { exact: false }).first(), `대본 문장 누락: ${line}`).toBeVisible();
   }
+
+  // 5 · 6단계(이름 · 연락처, 의료지도)는 상담원이 먼저 묻는 것이라 대본에서 뺐다.
+  // 대신 "끊지 말라"는 한 문장만 남는다.
+  await expect(page.getByText(/전화를 끊지 마세요/)).toBeVisible();
+  await expect(page.locator('main')).not.toContainText('제 이름은 ◯◯◯입니다');
 });
 
 test('환자 상태는 상황을 나열하지 않고 빈칸 한 문장으로 받는다', async ({ page }) => {

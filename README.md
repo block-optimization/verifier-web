@@ -66,8 +66,9 @@ POST /api/public/v1/location/reverse-geocode
   **위치가 실패해도 119 안내는 절대 막히지 않는다.**
 
 `VITE_NAVER_MAPS_CLIENT_ID`가 설정돼 있으면 위치 카드에 "지도로 보기" 토글이 생긴다(지도 탭 →
-그 지점 주소). Client ID는 비밀값이 아니라 NCP 콘솔의 서비스 URL 허용목록으로 보호된다.
-값이 없으면 토글 자체가 렌더되지 않는다.
+그 지점 주소, 우하단 "현재 위치" 버튼으로 처음 위치 복귀). Client ID는 비밀값이 아니라 NCP 콘솔의
+서비스 URL 허용목록으로 보호된다. 값이 없으면 토글 자체가 렌더되지 않는다.
+E2E는 이 키를 `e2e-test-key`로 주입하고 SDK 요청은 `stubNaverMaps`가 가로채므로 외부로 나가지 않는다.
 
 ## 4. 구조
 
@@ -107,6 +108,7 @@ verifier-web/
 | 6단계 대본 문장이 그대로 노출된다 | `script.spec.ts` |
 | 확인된 주소가 대본 문장에 채워지고, 실패 시 "모르겠습니다" 문장으로 바뀐다 | `script.spec.ts` |
 | 위치 상황(아파트 · 건물 · 산 · 실외)을 화면이 골라 하나만 보여준다 | `script.spec.ts` |
+| 지도를 열면 "현재 위치" 버튼이 지도 우하단에 뜨고, 누르면 처음 중심·배율로 돌아간다 | `map.spec.ts` |
 | WCAG 2.1 A/AA 위반 0건 | `a11y.spec.ts` |
 | 반복 진입 20회 연속 성공 | `soak.spec.ts` |
 

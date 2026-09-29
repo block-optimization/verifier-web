@@ -123,3 +123,49 @@ export async function clickBelowDock(page: Page, name: RegExp | string) {
   await expect(target).toBeVisible();
   await target.click();
 }
+
+/**
+ * Naver Maps SDK 를 가짜로 세운다.
+ *
+ * 실제 SDK 를 부르면 외부 네트워크 · 키 · 타일 로딩에 테스트가 묶인다. 우리가 쓰는
+ * 생성자와 메서드만 흉내 내고, 지도에 건 호출을 `window.__mapCalls` 에 남긴다.
+ */
+export async function stubNaverMaps(page: Page) {
+  await page.route('https://oapi.map.naver.com/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'text/javascript',
+      // IIFE 로 감싼다 — 최상위에 function Map 을 두면 전역 Map 생성자를 덮어써서
+      // 페이지(와 Playwright 의 직렬화)가 통째로 깨진다.
+      body: `(function () {
+        window.__mapCalls = [];
+        function LatLng(lat, lng) { this._lat = lat; this._lng = lng; }
+        LatLng.prototype.lat = function () { return this._lat; };
+        LatLng.prototype.lng = function () { return this._lng; };
+        function Point(x, y) { this.x = x; this.y = y; }
+        function NaverMapStub(el, options) {
+          this.options = options;
+          el.style.background = '#dde';
+          window.__mapCalls.push('create');
+        }
+        NaverMapStub.prototype.setCenter = function (p) { window.__mapCalls.push('setCenter:' + p.lat() + ',' + p.lng()); };
+        NaverMapStub.prototype.setZoom = function (z) { window.__mapCalls.push('setZoom:' + z); };
+        NaverMapStub.prototype.panTo = function (p) { window.__mapCalls.push('panTo:' + p.lat() + ',' + p.lng()); };
+        function Marker() {}
+        function InfoWindow() {}
+        InfoWindow.prototype.setContent = function () {};
+        InfoWindow.prototype.open = function () {};
+        window.naver = {
+          maps: {
+            LatLng: LatLng,
+            Point: Point,
+            Map: NaverMapStub,
+            Marker: Marker,
+            InfoWindow: InfoWindow,
+            Event: { addListener: function () {} },
+          },
+        };
+      })();`,
+    }),
+  );
+}

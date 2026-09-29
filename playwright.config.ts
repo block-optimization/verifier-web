@@ -40,6 +40,9 @@ export default defineConfig({
 
   webServer: {
     command: `npx vite --mode test --port ${PORT} --strictPort`,
+    // 지도 토글은 빌드 시점에 이 값이 있어야 렌더된다. 실제 Naver SDK 요청은
+    // tests/e2e/helpers.ts 의 stubNaverMaps 가 가로채므로 외부로 나가지 않는다.
+    env: { VITE_NAVER_MAPS_CLIENT_ID: 'e2e-test-key' },
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

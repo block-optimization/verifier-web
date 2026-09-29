@@ -481,12 +481,61 @@ img.brand {
 }
 
 /* 지도 토글 안의 지도 캔버스. 로드 전에는 sunken 배경만 보인다. */
+/* 지도 + 그 위에 얹히는 컨트롤. */
+.map-shell {
+  position: relative;
+}
 .map-frame {
   width: 100%;
   height: 220px;
   border-radius: var(--mv-radius-card);
   background: var(--mv-surface-sunken);
   border: 1px solid var(--mv-border);
+}
+
+/*
+ * 현재 위치로 되돌리기.
+ *
+ * 지도를 밀거나 축소하면 환자가 있는 지점을 다시 찾기 어렵다. 지도 위 오른쪽
+ * 아래에 작게 얹어 한 번에 돌아오게 한다. 지도 조작 자체를 가리지 않도록 작지만,
+ * 터치 타깃은 32px 아래로 내리지 않는다.
+ */
+.map-recenter {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mv-key);
+  background: var(--mv-surface);
+  border: 1px solid var(--mv-border);
+  border-radius: var(--mv-radius-pill);
+  box-shadow: 0 1px 3px rgb(17 20 23 / 14%);
+}
+.map-recenter:active {
+  background: var(--mv-key-tint);
+}
+
+/*
+ * 대본을 다 읽은 뒤의 한 문장. 단계 번호를 붙이지 않는다 — 읽을 대본이 아니라
+ * 지켜야 할 것 하나다.
+ */
+.report-close {
+  margin-top: 10px;
+  padding: 9px 12px;
+  background: var(--mv-key-tint);
+  border-radius: var(--mv-radius-md);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--mv-text);
+  word-break: keep-all;
+  text-wrap: pretty;
 }
 
 /* 119 신고 순서 — 제목을 더 굵고 크게 (한눈에 읽혀야 한다). */

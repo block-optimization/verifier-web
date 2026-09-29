@@ -173,24 +173,18 @@ function buildSteps(location: LocationState): ReportStep[] {
       ],
       extra: [{ when: '주변에 약 · 주사기가 있으면', say: '옆에 ◯◯◯가 떨어져 있습니다.' }],
     },
-    {
-      title: '신고자 본인 이름 · 연락 가능한 번호 말하기',
-      script: [
-        { say: '제 이름은 ◯◯◯입니다.' },
-        { when: '다른 번호를 물어보면', say: '010-◯◯◯◯-◯◯◯◯입니다.' },
-      ],
-    },
-    {
-      title: '전화를 끊지 말고 상담원 지시 따르기',
-      script: [
-        { say: '스피커폰으로 바꿨습니다.' },
-        { say: '무엇을 하면 될까요?' },
-      ],
-      extra: [{ when: '주변에 사람이 있으면', say: '자동심장충격기를 가져오라고 하겠습니다.' }],
-      detail: '상담원이 알려주는 대로 하세요. 숨을 쉬지 않으면 가슴 중앙을 강하고 빠르게 누르라고 안내합니다.',
-    },
   ];
 }
+
+/*
+ * 대본은 4단계에서 끊는다.
+ *
+ * 소방청 원문의 5 · 6단계(신고자 이름 · 연락처, 의료지도 받기)는 상담원이 먼저
+ * 물어보는 것들이라 대본이 필요 없다. 화면에 두면 목록만 길어져서 정작 앞의 네
+ * 단계가 밀린다. 대신 "끊지 말라"는 한 문장만 남긴다 — 이건 발견자가 먼저 알아야
+ * 한다(E-Gen: 상담원이 끊을 때까지 끊지 않고 질문에 답한다).
+ */
+const AFTER_SCRIPT = '여기까지 말했으면 전화를 끊지 마세요. 이름 · 연락처와 나머지는 상담원이 물어봅니다.';
 
 /** `◯` 빈칸만 색을 달리해 "여기는 내가 채운다"가 한눈에 보이게 한다. */
 function withBlanks(say: string) {
@@ -230,11 +224,17 @@ interface NaverInfoWindow {
   setContent: (html: string) => void;
   open: (map: unknown, position: NaverLatLng) => void;
 }
+/** 지도 인스턴스 중 우리가 쓰는 부분만. */
+interface NaverMap {
+  setCenter: (position: NaverLatLng) => void;
+  setZoom: (level: number) => void;
+  panTo?: (position: NaverLatLng) => void;
+}
 interface NaverMapsNamespace {
   maps: {
     LatLng: new (lat: number, lng: number) => NaverLatLng;
     Point: new (x: number, y: number) => NaverPoint;
-    Map: new (el: HTMLElement, options: { center: NaverLatLng; zoom: number }) => unknown;
+    Map: new (el: HTMLElement, options: { center: NaverLatLng; zoom: number }) => NaverMap;
     Marker: new (options: {
       position: NaverLatLng;
       map: unknown;
@@ -281,6 +281,9 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInitialized = useRef(false);
   const infoWindowRef = useRef<NaverInfoWindow | null>(null);
+  // 지도를 밀거나 확대한 뒤 현재 위치로 되돌리기 위해 인스턴스와 최초 중심을 들고 있는다.
+  const mapRef = useRef<NaverMap | null>(null);
+  const mapCenterRef = useRef<NaverLatLng | null>(null);
 
   const loadLocation = useCallback(() => {
     setLocation({ status: 'loading' });
@@ -340,6 +343,15 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
 
   const steps = buildSteps(location);
 
+  function recenterMap() {
+    const map = mapRef.current;
+    const center = mapCenterRef.current;
+    if (!map || !center) return;
+    map.setZoom(16);
+    if (map.panTo) map.panTo(center);
+    else map.setCenter(center);
+  }
+
   function handleMapToggle(e: SyntheticEvent<HTMLDetailsElement>) {
     if (!e.currentTarget.open) return;
     if (mapInitialized.current || location.status !== 'ready') return;
@@ -353,6 +365,8 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
         const { maps } = window.naver as unknown as NaverMapsNamespace;
         const center = new maps.LatLng(location.lat, location.lng);
         const map = new maps.Map(mapContainerRef.current, { center, zoom: 16 });
+        mapRef.current = map;
+        mapCenterRef.current = center;
 
         // 현재 위치 — 점(dot) 표시로. 지도 위 다른 지점을 누르면 그 주소를 보여주는
         // 마커/InfoWindow와 시각적으로 구분되게 한다.
@@ -449,7 +463,14 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
                 </summary>
                 <div className="citation-toggle__body">
                   {mapState === 'error' && <p className="hint">지도를 불러오지 못했어요.</p>}
-                  <div className="map-frame" ref={mapContainerRef} />
+                  <div className="map-shell">
+                    <div className="map-frame" ref={mapContainerRef} />
+                    {mapState === 'ready' && (
+                      <button type="button" className="map-recenter" onClick={recenterMap}>
+                        현재 위치
+                      </button>
+                    )}
+                  </div>
                 </div>
               </details>
             )}
@@ -475,6 +496,7 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
             </li>
           ))}
         </ol>
+        <p className="report-close">{AFTER_SCRIPT}</p>
         <p className="hint">
           따옴표 안의 문장을 그대로 읽으세요. <span className="script__blank">◯</span> 자리는 보고
           채우면 됩니다. 출처: 소방청 · 행정안전부 안전배움터 119 구급신고 요령
