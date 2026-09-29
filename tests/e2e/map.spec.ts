@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 
 async function openMap(page: import('@playwright/test').Page) {
   await enterByFragment(page, 'card', CARD_REFS.alpha);
-  await expect(page.getByText('서울특별시 중구 세종대로 110입니다.')).toBeVisible();
+  await expect(page.getByText('여기는 서울특별시 중구 세종대로 110입니다.')).toBeVisible();
   await page.getByText('지도로 보기').click();
 }
 

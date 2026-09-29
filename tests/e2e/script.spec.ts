@@ -16,9 +16,11 @@ import {
  * 상황 하나만 보여주고, 판단할 수 없는 환자 상태는 빈칸 한 문장으로 받는다.
  */
 const CORE_SCRIPT = [
-  '환자가 있습니다.',
-  '지금 ◯◯◯ 상태입니다.',
+  '안녕하세요. 환자가 있습니다.',
+  '현재 환자는 ◯◯◯ 상태입니다.',
   '나이와 지병은 모르겠습니다.',
+  '출동 부탁드립니다.',
+  '혹시 오시는 동안 제가 해야 할 일이 있을까요?',
 ];
 
 test('6단계 대본 문장이 그대로 화면에 있다', async ({ page }) => {
@@ -43,7 +45,7 @@ test('환자 상태는 상황을 나열하지 않고 빈칸 한 문장으로 받
   await enterByFragment(page, 'card', CARD_REFS.alpha);
   await expectCommonFinderScreen(page);
 
-  await expect(page.getByText('지금 ◯◯◯ 상태입니다.')).toBeVisible();
+  await expect(page.getByText('현재 환자는 ◯◯◯ 상태입니다.')).toBeVisible();
   // 의식 · 호흡 조합을 미리 늘어놓지 않는다 — 자기 경우를 찾는 데 시간이 든다.
   await expect(page.locator('main')).not.toContainText('의식이 없지만 숨은 쉬고 있습니다');
 });
@@ -54,7 +56,7 @@ test('확인된 주소가 대본 문장 안에 들어간다', async ({ page }) =
   await enterByFragment(page, 'card', CARD_REFS.alpha);
 
   // 위치 카드의 표시용 주소가 아니라, 읽을 수 있는 한 문장으로 나와야 한다.
-  await expect(page.getByText('서울특별시 중구 세종대로 110입니다.')).toBeVisible();
+  await expect(page.getByText('여기는 서울특별시 중구 세종대로 110입니다.')).toBeVisible();
   // 건물명이 잡혀도 환자가 그 건물 "앞"에 있다고 단정하지 않는다.
   await expect(page.locator('main')).not.toContainText('서울특별시청 건물입니다');
 });
@@ -111,7 +113,7 @@ test('도로명이 없으면 지번을 문장에 쓴다 — "(지번)" 꼬리표
   await grantLocation(page);
   await enterByFragment(page, 'card', CARD_REFS.alpha);
 
-  await expect(page.getByText('서울특별시 중구 태평로1가 31입니다.')).toBeVisible();
+  await expect(page.getByText('여기는 서울특별시 중구 태평로1가 31입니다.')).toBeVisible();
 });
 
 test('주소를 못 잡으면 모른다고 말하는 문장을 준다', async ({ page }) => {
@@ -127,26 +129,30 @@ test('주소를 못 잡으면 모른다고 말하는 문장을 준다', async ({
   await expect(page.getByText('환자가 있습니다.').first()).toBeVisible();
 });
 
-test('보이는 상태를 누르면 대사의 빈칸이 채워진다', async ({ page }) => {
+test('보이는 상태를 누르면 읽을 수 있는 문장이 만들어진다', async ({ page }) => {
   await mockReverseGeocode(page);
   await grantLocation(page);
   await enterByFragment(page, 'card', CARD_REFS.alpha);
   await expectCommonFinderScreen(page);
 
-  await expect(page.getByText('지금 ◯◯◯ 상태입니다.')).toBeVisible();
+  await expect(page.getByText('현재 환자는 ◯◯◯ 상태입니다.')).toBeVisible();
 
   await page.getByRole('button', { name: '의식 없음' }).click();
-  await expect(page.getByText('지금 의식 없음 상태입니다.')).toBeVisible();
+  await expect(page.getByText('현재 환자는 의식이 없습니다.')).toBeVisible();
 
   // 의식이 없으면서 숨도 안 쉬는 조합이 가장 급하다 — 하나만 고르게 하면 안 된다.
   await page.getByRole('button', { name: '숨 안 쉼' }).click();
-  await expect(page.getByText('지금 의식 없음, 숨 안 쉼 상태입니다.')).toBeVisible();
+  await expect(page.getByText('현재 환자는 의식이 없고, 숨을 쉬지 않습니다.')).toBeVisible();
+
+  // 버튼 글자를 그대로 끼우지 않는다 — "의식 없음 상태입니다" 는 읽을 수 없는 말이다.
+  await expect(page.locator('main')).not.toContainText('의식 없음 상태입니다');
+  await expect(page.locator('main')).not.toContainText('숨 안 쉼을 보입니다');
 
   // 다시 누르면 빠지고, 다 빠지면 빈칸으로 돌아온다.
   await page.getByRole('button', { name: '의식 없음' }).click();
-  await expect(page.getByText('지금 숨 안 쉼 상태입니다.')).toBeVisible();
+  await expect(page.getByText('현재 환자는 숨을 쉬지 않습니다.')).toBeVisible();
   await page.getByRole('button', { name: '숨 안 쉼' }).click();
-  await expect(page.getByText('지금 ◯◯◯ 상태입니다.')).toBeVisible();
+  await expect(page.getByText('현재 환자는 ◯◯◯ 상태입니다.')).toBeVisible();
 });
 
 test('고른 상태는 누른 순서가 아니라 목록 순서로 읽힌다', async ({ page }) => {
@@ -158,7 +164,7 @@ test('고른 상태는 누른 순서가 아니라 목록 순서로 읽힌다', a
   await page.getByRole('button', { name: '골절' }).click();
   await page.getByRole('button', { name: '경련' }).click();
   // 급한 것부터 읽히도록 화면이 순서를 잡는다.
-  await expect(page.getByText('지금 경련, 골절 상태입니다.')).toBeVisible();
+  await expect(page.getByText('현재 환자는 경련을 하고, 뼈가 부러진 것 같습니다.')).toBeVisible();
 });
 
 test('단계 제목 없이 대사와 안내만 남는다', async ({ page }) => {

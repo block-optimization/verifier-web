@@ -46,6 +46,9 @@ test('가이드에서 같은 자리의 버튼으로 신고 안내에 돌아온�
   await page.getByRole('button', { name: '응급처치 가이드' }).click();
   await expect(page.getByRole('region', { name: /가이드|원문/ })).toBeVisible();
 
+  // 돌아가는 길은 하단 한 곳뿐이다 — 상단의 "← 뒤로" 는 없앴다.
+  await expect(page.getByRole('button', { name: '이전 화면으로' })).toHaveCount(0);
+
   const dock = page.getByRole('region', { name: '상시 응급 도움' });
   await expect(dock.getByRole('link', { name: /119/ })).toBeVisible();
   await dock.getByRole('button', { name: '신고 안내로' }).click();

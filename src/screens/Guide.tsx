@@ -77,16 +77,7 @@ function GuideList({
   return (
     <main className="page">
       <header className="topbar">
-        <button
-          type="button"
-          className="link-btn back-btn"
-          onClick={onBack}
-          aria-label="이전 화면으로"
-        >
-          ← 뒤로
-        </button>
         <div className="brand">응급처치 가이드</div>
-        <span aria-hidden />
       </header>
 
       <section className="guide-hero">
@@ -148,7 +139,7 @@ function GuideList({
       <div className="sticky-actions" role="region" aria-label="상시 응급 도움">
         <div className="sticky-actions__inner sticky-actions__row">
           <Call119Button />
-          <button type="button" className="btn btn--secondary" onClick={onExit}>
+          <button type="button" className="btn btn--primary" onClick={onExit}>
             신고 안내로
           </button>
         </div>
@@ -293,7 +284,7 @@ function GuideDetail({
       <div className="sticky-actions" role="region" aria-label="상시 응급 도움">
         <div className="sticky-actions__inner sticky-actions__row">
           <Call119Button />
-          <button type="button" className="btn btn--secondary" onClick={onExit}>
+          <button type="button" className="btn btn--primary" onClick={onExit}>
             신고 안내로
           </button>
         </div>

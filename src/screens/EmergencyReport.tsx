@@ -64,8 +64,36 @@ interface ReportStep {
   symptomPicker?: boolean;
 }
 
-/** 3단계에서 눌러 고르는 상태 — 눌린 것이 대사의 ◯◯◯ 자리에 그대로 들어간다. */
-export const SYMPTOMS = ['의식 없음', '숨 안 쉼', '경련', '출혈', '안색 창백', '골절'] as const;
+/*
+ * 3단계에서 눌러 고르는 상태.
+ *
+ * 버튼 글자를 문장에 그대로 끼우면 "의식 없음 상태입니다" 처럼 읽을 수 없는 말이
+ * 된다. 버튼은 짧게(`label`), 문장은 자연스럽게 — 이어 말할 때의 연결형(`conj`)과
+ * 끝맺는 형(`end`)을 따로 갖는다. 여러 개를 고르면 마지막만 끝맺음이다:
+ *   [의식 없음, 숨 안 쉼] → "의식이 없고, 숨을 쉬지 않습니다."
+ */
+interface Symptom {
+  label: string;
+  conj: string;
+  end: string;
+}
+
+export const SYMPTOMS: Symptom[] = [
+  { label: '의식 없음', conj: '의식이 없고', end: '의식이 없습니다' },
+  { label: '숨 안 쉼', conj: '숨을 쉬지 않고', end: '숨을 쉬지 않습니다' },
+  { label: '경련', conj: '경련을 하고', end: '경련을 하고 있습니다' },
+  { label: '출혈', conj: '피가 많이 나고', end: '피가 많이 납니다' },
+  { label: '안색 창백', conj: '안색이 창백하고', end: '안색이 창백합니다' },
+  { label: '골절', conj: '뼈가 부러진 것 같고', end: '뼈가 부러진 것 같습니다' },
+];
+
+/** 고른 상태들을 한 문장으로. 고른 게 없으면 빈칸을 남긴다. */
+export function conditionSentence(picked: string[]): string {
+  const chosen = SYMPTOMS.filter((s) => picked.includes(s.label));
+  if (chosen.length === 0) return '현재 환자는 ◯◯◯ 상태입니다.';
+  const clauses = chosen.map((s, i) => (i === chosen.length - 1 ? s.end : s.conj));
+  return `현재 환자는 ${clauses.join(', ')}.`;
+}
 
 /**
  * 위치 단계의 대본 — 화면이 실제로 아는 주소만 문장에 넣는다.
@@ -88,7 +116,7 @@ function locationStep(location: LocationState): ReportStep {
     // 어느 상황인지는 화면이 판단한다. 역지오코딩이 산악 지목을 주면 산, 건물명을
     // 주면 건물(이름으로 아파트/그 외를 가른다), 둘 다 없으면 실외로 본다.
     // 발견자에게 전 상황을 나열해 고르게 하지 않는다 — 고르는 데 시간이 든다.
-    const address: ScriptLine = { say: `${location.spokenAddress}입니다.` };
+    const address: ScriptLine = { say: `여기는 ${location.spokenAddress}입니다.` };
     const APARTMENT = /아파트|APT|빌라|연립|주공|타운|자이|래미안|푸르지오|힐스테이트|e편한세상|캐슬|더샵/i;
 
     const cases = {
@@ -147,10 +175,11 @@ function locationStep(location: LocationState): ReportStep {
  * 행인이다. 모른다고 답하는 것을 기본 문장으로 두고 아는 경우를 예외로 뺐다.
  */
 function buildSteps(location: LocationState, condition: string): ReportStep[] {
+  // condition 은 이미 완성된 한 문장이다 (conditionSentence 참고).
   return [
     {
       title: '“환자가 있습니다”라고 먼저 알리기',
-      script: [{ say: '환자가 있습니다.' }],
+      script: [{ say: '안녕하세요. 환자가 있습니다.' }],
     },
     locationStep(location),
     {
@@ -158,8 +187,8 @@ function buildSteps(location: LocationState, condition: string): ReportStep[] {
       // 자기 경우를 찾는 데 시간이 든다 — 본 대로 채우는 한 문장으로 둔다.
       title: '환자 상태 · 질환 말하기',
       cue: '어깨를 두드리며 “괜찮으세요?” 하고 물어본 뒤, 가슴이 오르내리는지 보세요.',
-      script: [{ say: `지금 ${condition} 상태입니다.` }],
-      detail: '보이는 대로 고르세요. 고른 것이 위 문장에 그대로 들어갑니다.',
+      script: [{ say: condition }],
+      detail: '보이는 대로 고르세요. 위 문장이 고른 대로 바뀝니다.',
       symptomPicker: true,
     },
     {
@@ -167,6 +196,15 @@ function buildSteps(location: LocationState, condition: string): ReportStep[] {
       script: [
         { say: '나이와 지병은 모르겠습니다.' },
         { when: '아는 경우에만', say: '◯◯살이고, 평소 ◯◯◯ 약을 드십니다.' },
+      ],
+    },
+    {
+      // 발견자가 먼저 물어야 의료지도가 시작된다. 상담원이 묻기를 기다리지 않게
+      // 마지막 두 문장을 대사로 준다.
+      title: '출동 요청하고 할 일 묻기',
+      script: [
+        { say: '출동 부탁드립니다.' },
+        { say: '혹시 오시는 동안 제가 해야 할 일이 있을까요?' },
       ],
     },
   ];
@@ -340,11 +378,7 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
     loadLocation();
   }, [loadLocation]);
 
-  const condition =
-    symptoms.length > 0
-      ? SYMPTOMS.filter((sym) => symptoms.includes(sym)).join(', ')
-      : '◯◯◯';
-  const steps = buildSteps(location, condition);
+  const steps = buildSteps(location, conditionSentence(symptoms));
 
   function toggleSymptom(symptom: string) {
     setSymptoms((prev) =>
@@ -497,17 +531,17 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
               {step.detail && <div className="step-list__detail">{step.detail}</div>}
               {step.symptomPicker && (
                 <div className="symptom-picker" role="group" aria-label="보이는 상태 고르기">
-                  {SYMPTOMS.map((symptom) => {
-                    const on = symptoms.includes(symptom);
+                  {SYMPTOMS.map(({ label }) => {
+                    const on = symptoms.includes(label);
                     return (
                       <button
                         type="button"
-                        key={symptom}
+                        key={label}
                         className={on ? 'symptom symptom--on' : 'symptom'}
                         aria-pressed={on}
-                        onClick={() => toggleSymptom(symptom)}
+                        onClick={() => toggleSymptom(label)}
                       >
-                        {symptom}
+                        {label}
                       </button>
                     );
                   })}
@@ -526,7 +560,7 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
       <div className="sticky-actions" role="region" aria-label="상시 응급 도움">
         <div className="sticky-actions__inner sticky-actions__row">
           <Call119Button />
-          <button type="button" className="btn btn--secondary" onClick={onOpenGuide}>
+          <button type="button" className="btn btn--primary" onClick={onOpenGuide}>
             응급처치 가이드
           </button>
         </div>
