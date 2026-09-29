@@ -127,15 +127,51 @@ test('주소를 못 잡으면 모른다고 말하는 문장을 준다', async ({
   await expect(page.getByText('환자가 있습니다.').first()).toBeVisible();
 });
 
-test('접힌 상황은 “다른 상황이면” 을 열면 나온다', async ({ page }) => {
+test('보이는 상태를 누르면 대사의 빈칸이 채워진다', async ({ page }) => {
   await mockReverseGeocode(page);
   await grantLocation(page);
   await enterByFragment(page, 'card', CARD_REFS.alpha);
   await expectCommonFinderScreen(page);
 
-  const hidden = page.getByText('옆에 ◯◯◯가 떨어져 있습니다.');
-  await expect(hidden).toBeHidden();
+  await expect(page.getByText('지금 ◯◯◯ 상태입니다.')).toBeVisible();
 
-  await page.getByRole('group').filter({ hasText: '옆에 ◯◯◯가 떨어져' }).getByText('다른 상황이면').click();
-  await expect(hidden).toBeVisible();
+  await page.getByRole('button', { name: '의식 없음' }).click();
+  await expect(page.getByText('지금 의식 없음 상태입니다.')).toBeVisible();
+
+  // 의식이 없으면서 숨도 안 쉬는 조합이 가장 급하다 — 하나만 고르게 하면 안 된다.
+  await page.getByRole('button', { name: '숨 안 쉼' }).click();
+  await expect(page.getByText('지금 의식 없음, 숨 안 쉼 상태입니다.')).toBeVisible();
+
+  // 다시 누르면 빠지고, 다 빠지면 빈칸으로 돌아온다.
+  await page.getByRole('button', { name: '의식 없음' }).click();
+  await expect(page.getByText('지금 숨 안 쉼 상태입니다.')).toBeVisible();
+  await page.getByRole('button', { name: '숨 안 쉼' }).click();
+  await expect(page.getByText('지금 ◯◯◯ 상태입니다.')).toBeVisible();
+});
+
+test('고른 상태는 누른 순서가 아니라 목록 순서로 읽힌다', async ({ page }) => {
+  await mockReverseGeocode(page);
+  await grantLocation(page);
+  await enterByFragment(page, 'card', CARD_REFS.alpha);
+  await expectCommonFinderScreen(page);
+
+  await page.getByRole('button', { name: '골절' }).click();
+  await page.getByRole('button', { name: '경련' }).click();
+  // 급한 것부터 읽히도록 화면이 순서를 잡는다.
+  await expect(page.getByText('지금 경련, 골절 상태입니다.')).toBeVisible();
+});
+
+test('단계 제목 없이 대사와 안내만 남는다', async ({ page }) => {
+  await mockReverseGeocode(page);
+  await grantLocation(page);
+  await enterByFragment(page, 'card', CARD_REFS.alpha);
+  await expectCommonFinderScreen(page);
+
+  const main = page.locator('main');
+  await expect(main).not.toContainText('라고 먼저 알리기');
+  await expect(main).not.toContainText('정확한 위치 말하기');
+  await expect(main).not.toContainText('다른 상황이면');
+  // 읽을 것과 확인할 것은 남는다.
+  await expect(page.getByText('환자가 있습니다.').first()).toBeVisible();
+  await expect(page.getByText(/가슴이 오르내리는지/)).toBeVisible();
 });

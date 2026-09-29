@@ -48,6 +48,7 @@ export function Guide({ onBack }: { onBack: () => void }) {
       <GuideDetail
         guide={selected}
         onBack={() => setSelected(null)}
+        onExit={onBack}
       />
     );
   }
@@ -70,6 +71,9 @@ function GuideList({
   onBack: () => void;
   onSelect: (g: GuideItem) => void;
 }) {
+  // 하단 dock 의 오른쪽 버튼이 신고 안내로 돌아가는 길이다 — 위로 스크롤해 상단
+  // 뒤로 버튼을 찾지 않아도 되게 한다.
+  const onExit = onBack;
   return (
     <main className="page">
       <header className="topbar">
@@ -142,8 +146,11 @@ function GuideList({
       </p>
 
       <div className="sticky-actions" role="region" aria-label="상시 응급 도움">
-        <div className="sticky-actions__inner">
+        <div className="sticky-actions__inner sticky-actions__row">
           <Call119Button />
+          <button type="button" className="btn btn--secondary" onClick={onExit}>
+            신고 안내로
+          </button>
         </div>
       </div>
     </main>
@@ -153,9 +160,13 @@ function GuideList({
 function GuideDetail({
   guide,
   onBack,
+  onExit,
 }: {
   guide: GuideItem;
+  /** 가이드 목록으로 (상단 뒤로 버튼) */
   onBack: () => void;
+  /** 신고 안내 화면으로 (하단 dock) */
+  onExit: () => void;
 }) {
   const visual = GUIDE_VISUALS[guide.slug] ?? { icon: '·', accent: 'neutral' };
   const { content } = guide;
@@ -280,8 +291,11 @@ function GuideDetail({
       </details>
 
       <div className="sticky-actions" role="region" aria-label="상시 응급 도움">
-        <div className="sticky-actions__inner">
+        <div className="sticky-actions__inner sticky-actions__row">
           <Call119Button />
+          <button type="button" className="btn btn--secondary" onClick={onExit}>
+            신고 안내로
+          </button>
         </div>
       </div>
     </main>

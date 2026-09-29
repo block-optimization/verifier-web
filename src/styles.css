@@ -580,7 +580,7 @@ img.brand {
   border: 1px solid var(--mv-border);
   border-left: 3px solid var(--mv-key);
   border-radius: var(--mv-radius-md);
-  font-size: 14.5px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.55;
   color: var(--mv-text);
@@ -594,36 +594,33 @@ img.brand {
 }
 
 /*
- * 덜 흔한 상황의 대본 — 접어 둔다.
+ * 보이는 상태 고르기 — 누르면 위 대사의 ◯◯◯ 자리에 그대로 들어간다.
  *
- * 상황을 전부 펼쳐 두면 한 단계에 문장이 여덟 줄씩 깔려서, 정작 자기 경우를 찾는
- * 데 시간이 걸린다. 흔한 쪽만 펼치고 나머지는 한 번 눌러 열게 한다.
+ * 당황한 발견자에게 문장을 쓰게 하지 않는다. 한 줄에 셋씩 두 줄, 여러 개를 동시에
+ * 고를 수 있다 — 의식이 없으면서 숨도 안 쉬는 조합이 가장 급하다.
  */
-.script-more {
-  margin-top: 7px;
+.symptom-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
 }
-.script-more > summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 0;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--mv-key);
-  cursor: pointer;
-  list-style: none;
-  min-height: 28px;
+.symptom {
+  min-height: 38px;
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mv-text-muted);
+  background: var(--mv-surface);
+  border: 1px solid var(--mv-border);
+  border-radius: var(--mv-radius-md);
+  word-break: keep-all;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
-.script-more > summary::-webkit-details-marker {
-  display: none;
-}
-.script-more > summary::after {
-  content: '＋';
-  font-size: 12px;
-  line-height: 1;
-}
-.script-more[open] > summary::after {
-  content: '－';
+.symptom--on {
+  color: #fff;
+  background: var(--mv-key);
+  border-color: var(--mv-key);
 }
 
 
@@ -696,12 +693,18 @@ img.brand {
   flex-direction: column;
   gap: 8px;
 }
+/* 119(왼) · 보조 행동(오른)을 한 줄에. __inner 가 column 이라 방향을 되돌린다. */
 .sticky-actions__row {
   display: flex;
+  flex-direction: row;
   gap: 8px;
 }
 .sticky-actions__row > * {
   flex: 1;
+}
+/* 119 는 급할 때 엄지가 먼저 닿는 쪽이라 조금 더 넓게 둔다. */
+.sticky-actions__row > .call119 {
+  flex: 1.3;
 }
 
 /* -------------------------------------------------------------------------

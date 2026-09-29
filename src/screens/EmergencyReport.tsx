@@ -53,16 +53,19 @@ interface ScriptLine {
 }
 
 interface ReportStep {
+  /** 목록 key 이자 이 단계가 무엇인지 — 화면에는 그리지 않는다. 읽을 건 대사다. */
   title: string;
   /** 말하기 전에 해야 할 확인 동작. */
   cue?: string;
-  /** 항상 펼쳐 두는 문장 — 흔한 경우만. */
   script?: ScriptLine[];
-  /** 덜 흔한 상황. 접어 두고 필요한 사람만 펼친다. */
-  extra?: ScriptLine[];
   /** 문장 뒤에 붙는 보충 안내. */
   detail?: string;
+  /** 눈에 보이는 상태를 눌러 대사의 빈칸을 채우는 단계인지. */
+  symptomPicker?: boolean;
 }
+
+/** 3단계에서 눌러 고르는 상태 — 눌린 것이 대사의 ◯◯◯ 자리에 그대로 들어간다. */
+export const SYMPTOMS = ['의식 없음', '숨 안 쉼', '경련', '출혈', '안색 창백', '골절'] as const;
 
 /**
  * 위치 단계의 대본 — 화면이 실제로 아는 주소만 문장에 넣는다.
@@ -130,14 +133,7 @@ function locationStep(location: LocationState): ReportStep {
       { when: '간판이 보이면', say: '근처에 ◯◯◯가 보입니다.' },
       { when: '전봇대가 보이면', say: '전봇대 번호는 ◯◯◯◯◯◯◯◯입니다.' },
     ],
-    extra: [
-      { when: '건물 안이라면', say: '엘리베이터에 붙은 번호는 ◯◯◯◯입니다.' },
-      { when: '지하라면', say: '지하라서 위치가 안 잡히는 것 같습니다.' },
-      { when: '버스정류장이 보이면', say: '◯◯◯ 정류장 앞입니다.' },
-      { when: '고속도로라면', say: '◯◯고속도로 ◯◯◯킬로미터 지점입니다.' },
-      { when: '산이라면', say: '국가지점번호 ◯◯ ◯◯◯◯ ◯◯◯◯입니다.' },
-    ],
-    detail: '전봇대 번호는 “위험” 글자 아래에 적힌 여덟 자리입니다.',
+    detail: '전봇대 번호는 “위험” 글자 아래에 적힌 여덟 자리입니다. 건물 안이면 엘리베이터에 붙은 번호도 됩니다.',
   };
 }
 
@@ -150,7 +146,7 @@ function locationStep(location: LocationState): ReportStep {
  * 처럼 가족이 신고하는 상황을 전제하는데, 이 화면의 사용자는 모르는 사람을 발견한
  * 행인이다. 모른다고 답하는 것을 기본 문장으로 두고 아는 경우를 예외로 뺐다.
  */
-function buildSteps(location: LocationState): ReportStep[] {
+function buildSteps(location: LocationState, condition: string): ReportStep[] {
   return [
     {
       title: '“환자가 있습니다”라고 먼저 알리기',
@@ -162,8 +158,9 @@ function buildSteps(location: LocationState): ReportStep[] {
       // 자기 경우를 찾는 데 시간이 든다 — 본 대로 채우는 한 문장으로 둔다.
       title: '환자 상태 · 질환 말하기',
       cue: '어깨를 두드리며 “괜찮으세요?” 하고 물어본 뒤, 가슴이 오르내리는지 보세요.',
-      script: [{ say: '지금 ◯◯◯ 상태입니다.' }],
-      detail: '보이는 대로 말하세요 — 의식 없음 · 숨 안 쉼 · 경련 · 출혈 · 떨어짐처럼 눈에 보이는 것이면 됩니다.',
+      script: [{ say: `지금 ${condition} 상태입니다.` }],
+      detail: '보이는 대로 고르세요. 고른 것이 위 문장에 그대로 들어갑니다.',
+      symptomPicker: true,
     },
     {
       title: '환자 나이 · 지병 말하기',
@@ -171,7 +168,6 @@ function buildSteps(location: LocationState): ReportStep[] {
         { say: '나이와 지병은 모르겠습니다.' },
         { when: '아는 경우에만', say: '◯◯살이고, 평소 ◯◯◯ 약을 드십니다.' },
       ],
-      extra: [{ when: '주변에 약 · 주사기가 있으면', say: '옆에 ◯◯◯가 떨어져 있습니다.' }],
     },
   ];
 }
@@ -284,6 +280,9 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
   // 지도를 밀거나 확대한 뒤 현재 위치로 되돌리기 위해 인스턴스와 최초 중심을 들고 있는다.
   const mapRef = useRef<NaverMap | null>(null);
   const mapCenterRef = useRef<NaverLatLng | null>(null);
+  // 눌러서 고른 상태. 여러 개를 동시에 고를 수 있다 — 의식이 없으면서 숨도 안 쉬는
+  // 경우가 가장 급한 조합이라 하나만 고르게 하면 안 된다.
+  const [symptoms, setSymptoms] = useState<string[]>([]);
 
   const loadLocation = useCallback(() => {
     setLocation({ status: 'loading' });
@@ -341,7 +340,17 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
     loadLocation();
   }, [loadLocation]);
 
-  const steps = buildSteps(location);
+  const condition =
+    symptoms.length > 0
+      ? SYMPTOMS.filter((sym) => symptoms.includes(sym)).join(', ')
+      : '◯◯◯';
+  const steps = buildSteps(location, condition);
+
+  function toggleSymptom(symptom: string) {
+    setSymptoms((prev) =>
+      prev.includes(symptom) ? prev.filter((s) => s !== symptom) : [...prev, symptom],
+    );
+  }
 
   function recenterMap() {
     const map = mapRef.current;
@@ -483,16 +492,27 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
         <ol className="step-list step-list--emphasis">
           {steps.map((step) => (
             <li className="step-list__item" key={step.title}>
-              <div className="step-list__title">{step.title}</div>
               {step.cue && <div className="step-list__detail">{step.cue}</div>}
               {step.script && <ScriptLines lines={step.script} />}
-              {step.extra && step.extra.length > 0 && (
-                <details className="script-more">
-                  <summary>다른 상황이면</summary>
-                  <ScriptLines lines={step.extra} />
-                </details>
-              )}
               {step.detail && <div className="step-list__detail">{step.detail}</div>}
+              {step.symptomPicker && (
+                <div className="symptom-picker" role="group" aria-label="보이는 상태 고르기">
+                  {SYMPTOMS.map((symptom) => {
+                    const on = symptoms.includes(symptom);
+                    return (
+                      <button
+                        type="button"
+                        key={symptom}
+                        className={on ? 'symptom symptom--on' : 'symptom'}
+                        aria-pressed={on}
+                        onClick={() => toggleSymptom(symptom)}
+                      >
+                        {symptom}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </li>
           ))}
         </ol>
@@ -503,15 +523,12 @@ export function EmergencyReport({ onOpenGuide }: { onOpenGuide: () => void }) {
         </p>
       </section>
 
-      <div className="actions">
-        <button type="button" className="btn btn--primary" onClick={onOpenGuide}>
-          신고 완료 · 응급처치 가이드 보기
-        </button>
-      </div>
-
       <div className="sticky-actions" role="region" aria-label="상시 응급 도움">
-        <div className="sticky-actions__inner">
+        <div className="sticky-actions__inner sticky-actions__row">
           <Call119Button />
+          <button type="button" className="btn btn--secondary" onClick={onOpenGuide}>
+            응급처치 가이드
+          </button>
         </div>
       </div>
     </main>
